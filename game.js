@@ -93,6 +93,10 @@ const tiles_cnt_obj = [update_scale(create_text(""), content_cnt_size),
                        update_scale(create_text(""), content_cnt_size),
                        update_scale(create_text(""), content_cnt_size),
                        update_scale(create_text(""), content_cnt_size)];
+// Texts
+const text_game_over = update_position(update_color(update_scale(
+                                       create_text(""), [4, 4]),
+                                       content_color_dark), [240, 240]);
 
 // Game states
 const game_tile_types = [];
@@ -284,6 +288,22 @@ function game_is_over()
 }
 
 // Game control
+function create_new_game()
+{
+    update_text(text_game_over, "");
+    const rpos = math_floor(math_random() * 1000) % 9;
+    for (let i = 0; i < 9; i = i + 1) {
+        reset_tile_type(i, 0);
+    }
+    reset_tile_type(rpos, 1);
+}
+
+function end_game()
+{
+    update_to_top(background);
+    update_text(text_game_over, "GAME OVER");
+    update_to_top(text_game_over);
+}
 
 // On start
 
@@ -298,15 +318,7 @@ for (let i = 0; i < 9; i = i + 1) {
     update_position(tiles_cnt_obj[i], get_cnt_pos(i));
 }
 
-function init_game()
-{
-    const rpos = math_floor(math_random() * 1000) % 9;
-    for (let i = 0; i < 9; i = i + 1) {
-        reset_tile_type(i, 0);
-    }
-    reset_tile_type(rpos, 1);
-}
-init_game();
+create_new_game();
 
 // On update
 function get_input()
@@ -323,29 +335,52 @@ function get_input()
     if (input_key_down("a") || input_key_down("ArrowLeft")) {
         return 3;
     }
+    if (input_key_down("Enter") || input_key_down(" ")) {
+        return 4;
+    }
 }
 
+// Game state:
+// state[0]: input result in last frame, for debounce
+// state[1]: main state: 0 -> gaming, 1 -> gameover
 function on_update(state)
 {
-    // Check game over
-    if (game_is_over()) {
-        init_game();
+    // Initialize state
+    for (let i = 0; i < 2; i = i + 1) {
+        if (state[i] === undefined) {
+            state[i] = 0;
+        }
     }
     
-    // Debounce: state[0] for dir last frame
-    let dir = get_input();
-    if (dir === state[0]) {
-        dir = undefined;
+    // Handle input
+    let input = get_input();
+    if (input === state[0]) {
+        input = undefined;
     } else {
-        state[0] = dir;
+        state[0] = input;
     }
     
     // Valid input
-    if (dir !== undefined) {
-        const valid_move = move_and_match(dir);
-        if (valid_move) {
-            reduce_tile_cnt_all();
-            add_random_tile();
+    if (state[1] === 0) { // Gaming
+        // Check game over
+        if (game_is_over()) {
+            end_game();
+            state[1] = 1;
+        } else {
+            state[1] = 0;
+        }
+        
+        if (input !== undefined && 0 <= input && input <= 3) {
+            const valid_move = move_and_match(input);
+            if (valid_move) {
+                reduce_tile_cnt_all();
+                add_random_tile();
+            }
+        }
+    }
+    if (state[1] === 1) { // Gameover
+        if (input !== undefined && input === 4) {
+            create_new_game();
         }
     }
 }
