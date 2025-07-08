@@ -206,8 +206,8 @@ function move_and_match(dir_id)
         const types = [];
         const cnts = [];
         for (let i = 0; i < 3; i = i + 1) {
-            types[i] = game_tile_types[line[i]];
-            cnts[i] = game_tile_cnts[line[i]];
+            types[i] = result_tile_types[line[i]];
+            cnts[i] = result_tile_cnts[line[i]];
         }
         for (let i = 0; i < 2; i = i + 1) {
             if (result_tile_types[line[i]] !== 0 &&
@@ -258,7 +258,7 @@ function add_random_tile()
     
     const rpos = math_floor(math_random() * 1000) % top;
     const rtype = (math_random() > 0.9) ? 2 : 1; // 2H for 90%, 4He for 10%
-    reset_tile_type(rpos, rtype);
+    reset_tile_type(empty_pos[rpos], rtype);
 }
 
 // Game control
