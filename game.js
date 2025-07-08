@@ -170,7 +170,7 @@ const pos_by_dir = [[[0, 3, 6], [1, 4, 7], [2, 5, 8]],
                     [[2, 1, 0], [5, 4, 3], [8, 7, 6]],
                     [[8, 5, 2], [7, 4, 1], [6, 3, 0]],
                     [[0, 1, 2], [3, 4, 5], [6, 7, 8]]];
-function move_and_match(dir_id)
+function try_move_and_match(dir_id)
 {
     const lines = pos_by_dir[dir_id];
 
@@ -237,11 +237,23 @@ function move_and_match(dir_id)
     for (let i = 0; i < 9; i = i + 1) {
         if (result_tile_types[i] !== game_tile_types[i]) {
             flag = true;
-            update_tile(i, result_tile_types[i], result_tile_cnts[i]);
+            break;
         }
     }
 
-    return flag;
+    return [result_tile_types, result_tile_cnts, flag];
+}
+
+function move_and_match(dir_id)
+{
+    // [0]: type, [1]: cnt, [2]: flag
+    const try_result = try_move_and_match(dir_id);
+    if (try_result[2]) {
+        for (let i = 0; i < 9; i = i + 1) {
+            update_tile(i, try_result[0][i], try_result[1][i]);
+        }
+    }
+    return try_result[2];
 }
 
 // Add random tile
@@ -259,6 +271,16 @@ function add_random_tile()
     const rpos = math_floor(math_random() * 1000) % top;
     const rtype = (math_random() > 0.9) ? 2 : 1; // 2H for 90%, 4He for 10%
     reset_tile_type(empty_pos[rpos], rtype);
+}
+
+// Check game over
+function game_is_over()
+{
+    const try_valid = [try_move_and_match(0)[2],
+                       try_move_and_match(1)[2],
+                       try_move_and_match(2)[2],
+                       try_move_and_match(3)[2]];
+    return !(try_valid[0] || try_valid[1] || try_valid[2] || try_valid[3]);
 }
 
 // Game control
@@ -289,22 +311,27 @@ init_game();
 // On update
 function get_input()
 {
-    if (input_key_down("w")) {
+    if (input_key_down("w") || input_key_down("ArrowUp")) {
         return 0;
     }
-    if (input_key_down("d")) {
+    if (input_key_down("d") || input_key_down("ArrowRight")) {
         return 1;
     }
-    if (input_key_down("s")) {
+    if (input_key_down("s") || input_key_down("ArrowDown")) {
         return 2;
     }
-    if (input_key_down("a")) {
+    if (input_key_down("a") || input_key_down("ArrowLeft")) {
         return 3;
     }
 }
 
 function on_update(state)
 {
+    // Check game over
+    if (game_is_over()) {
+        init_game();
+    }
+    
     // Debounce: state[0] for dir last frame
     let dir = get_input();
     if (dir === state[0]) {
@@ -313,6 +340,7 @@ function on_update(state)
         state[0] = dir;
     }
     
+    // Valid input
     if (dir !== undefined) {
         const valid_move = move_and_match(dir);
         if (valid_move) {
