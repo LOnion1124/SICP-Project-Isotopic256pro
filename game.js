@@ -12,15 +12,32 @@ import {create_audio, loop_audio, play_audio, stop_audio, create_circle,
 // Constants
 /* ---------------------------------------------------------------- */
 
-const canvas_size = [480, 480];
-const canvas_center = [240, 240];
+// Size parameters
+const scale_base = 2;
+const scale = scale_base * 240;
+const canvas_size = [scale, scale];
+const canvas_center = [scale * 0.5, scale * 0.5];
 
-const grid_radius = 70;
-const grid_pos = [[80, 80], [240, 80], [400, 80],
-                  [80, 240], [240, 240], [400, 240],
-                  [80, 400], [240, 400], [400, 400]];
+const grid_scale = scale / 3;
+const grid_radius = grid_scale * 0.45;
+const grid_pos = [[grid_scale * 0.5, grid_scale * 0.5],
+                  [grid_scale * 1.5, grid_scale * 0.5],
+                  [grid_scale * 2.5, grid_scale * 0.5],
+                  [grid_scale * 0.5, grid_scale * 1.5],
+                  [grid_scale * 1.5, grid_scale * 1.5],
+                  [grid_scale * 2.5, grid_scale * 1.5],
+                  [grid_scale * 0.5, grid_scale * 2.5],
+                  [grid_scale * 1.5, grid_scale * 2.5],
+                  [grid_scale * 2.5, grid_scale * 2.5]];
 
-// const content_color_invisible = [0, 0, 0, 0];
+const content_title_size = [2 * scale_base, 2 * scale_base];
+const content_name_size = [2 * scale_base, 2 * scale_base];
+const content_val_size = [scale_base, scale_base];
+const content_cnt_size = [scale_base, scale_base];
+
+// Colors
+const background_color = [187, 173, 160, 255];
+
 const content_color_light = [249, 246, 242, 255];
 const content_color_dark = [119, 110, 101, 255];
 
@@ -28,11 +45,7 @@ const musk_color_invisible = [249, 246, 242, 0];
 const musk_color_translucent = [249, 246, 242, 128];
 const musk_color_solid = [249, 246, 242, 255];
 
-const content_name_size = [4, 4];
-const content_val_size = [2, 2];
-const content_cnt_size = [2, 2];
-
-// Indices
+// Tile properties by type
 // 0 -> empty, 1 -> 2H, 2 -> 4He, 3 -> 8Be(NS), 4 -> 16O
 // 5 -> 32P(NS), 6 -> 64Ni, 7 -> 128Sn(NS), 8 -> 256No
 const tile_colors = [[205, 193, 180, 255],
@@ -62,7 +75,7 @@ const tile_init_cnt_strs = ["", "", "", "5", "", "23", "", "95", ""];
 /* ---------------------------------------------------------------- */
 
 // Background
-const background = update_color(create_rectangle(480, 480), [187, 173, 160, 255]);
+const background = update_color(create_rectangle(scale, scale), background_color);
 
 // Tiles
 const tiles_obj = [create_circle(grid_radius),
@@ -102,14 +115,14 @@ const tiles_cnt_obj = [update_scale(create_text(""), content_cnt_size),
                        update_scale(create_text(""), content_cnt_size),
                        update_scale(create_text(""), content_cnt_size)];
 // Musks
-const musk_game_start = update_color(create_rectangle(480, 480), musk_color_invisible);
-const musk_game_over = update_color(create_rectangle(480, 480), musk_color_invisible);
+const musk_game_start = update_color(create_rectangle(scale, scale), musk_color_invisible);
+const musk_game_over = update_color(create_rectangle(scale, scale), musk_color_invisible);
 
 // Texts
-const text_game_start = update_color(update_scale(
-                        create_text(""), [4, 4]), content_color_dark);
-const text_game_over = update_color(update_scale(
-                       create_text(""), [4, 4]), content_color_dark);
+const text_game_start = update_color(update_scale(create_text(""),
+                        content_title_size), content_color_dark);
+const text_game_over = update_color(update_scale(create_text(""),
+                       content_title_size), content_color_dark);
 
 // Game states
 /* ---------------------------------------------------------------- */
@@ -363,14 +376,14 @@ function end_game()
 function get_val_pos(i)
 {
     const offset_x = 0;
-    const offset_y = -40;
+    const offset_y = -20 * scale_base;
     return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
 }
 
 function get_cnt_pos(i)
 {
     const offset_x = 0;
-    const offset_y = 40;
+    const offset_y = 20 * scale_base;
     return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
 }
 
