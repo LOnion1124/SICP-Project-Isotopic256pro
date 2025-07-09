@@ -10,6 +10,11 @@ import {create_audio, loop_audio, play_audio, stop_audio, create_circle,
         update_loop} from "arcade_2d"; // Simply import everything
 
 // Constants
+/* ---------------------------------------------------------------- */
+
+const canvas_size = [480, 480];
+const canvas_center = [240, 240];
+
 const grid_radius = 70;
 const grid_pos = [[80, 80], [240, 80], [400, 80],
                   [80, 240], [240, 240], [400, 240],
@@ -19,11 +24,13 @@ const grid_pos = [[80, 80], [240, 80], [400, 80],
 const content_color_light = [249, 246, 242, 255];
 const content_color_dark = [119, 110, 101, 255];
 
+const musk_color_invisible = [249, 246, 242, 0];
+const musk_color_translucent = [249, 246, 242, 128];
+const musk_color_solid = [249, 246, 242, 255];
+
 const content_name_size = [4, 4];
 const content_val_size = [2, 2];
 const content_cnt_size = [2, 2];
-
-// Properties for tile types
 
 // Indices
 // 0 -> empty, 1 -> 2H, 2 -> 4He, 3 -> 8Be(NS), 4 -> 16O
@@ -52,6 +59,7 @@ const tile_init_cnt = [-1, -1, -1, 6, -1, 24, -1, 96, -1];
 const tile_init_cnt_strs = ["", "", "", "5", "", "23", "", "95", ""];
 
 // Create game objects
+/* ---------------------------------------------------------------- */
 
 // Background
 const background = update_color(create_rectangle(480, 480), [187, 173, 160, 255]);
@@ -93,23 +101,27 @@ const tiles_cnt_obj = [update_scale(create_text(""), content_cnt_size),
                        update_scale(create_text(""), content_cnt_size),
                        update_scale(create_text(""), content_cnt_size),
                        update_scale(create_text(""), content_cnt_size)];
+// Musks
+const musk_game_start = update_color(create_rectangle(480, 480), musk_color_invisible);
+const musk_game_over = update_color(create_rectangle(480, 480), musk_color_invisible);
+
 // Texts
-const text_game_over = update_position(update_color(update_scale(
-                                       create_text(""), [4, 4]),
-                                       content_color_dark), [240, 240]);
+const text_game_start = update_color(update_scale(
+                        create_text(""), [4, 4]), content_color_dark);
+const text_game_over = update_color(update_scale(
+                       create_text(""), [4, 4]), content_color_dark);
 
 // Game states
+/* ---------------------------------------------------------------- */
+
 const game_tile_types = [];
 const game_tile_cnts = [];
 
-// Helper functions
+// Draw (based on game states)
+/* ---------------------------------------------------------------- */
 
-//Tile set function
-function reset_tile_type(obj_idx, type_id)
+function draw_tile(obj_idx, type_id, cnt)
 {
-    // Game control
-    game_tile_types[obj_idx] = type_id;
-    game_tile_cnts[obj_idx] = tile_init_cnt[type_id];
     // Main color
     update_color(tiles_obj[obj_idx], tile_colors[type_id]);
     // Name
@@ -118,22 +130,71 @@ function reset_tile_type(obj_idx, type_id)
     // Value
     update_text(tiles_val_obj[obj_idx], tile_val_strs[type_id]);
     update_color(tiles_val_obj[obj_idx], tile_content_colors[type_id]);
-    // Init count
-    update_text(tiles_cnt_obj[obj_idx], tile_init_cnt_strs[type_id]);
+    // Count
+    update_text(tiles_cnt_obj[obj_idx], cnt > 0 ? stringify(cnt) : "");
     update_color(tiles_cnt_obj[obj_idx], tile_content_colors[type_id]);
 }
 
-// Tile count update function
+function draw_tile_all()
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        draw_tile(i, game_tile_types[i], game_tile_cnts[i]);
+    }
+}
+
+function draw_start()
+{
+    // Undraw game over
+    update_color(musk_game_over, musk_color_invisible);
+    update_text(text_game_over, "");
+    // Draw game start
+    update_to_top(update_color(musk_game_start, musk_color_solid));
+    update_to_top(update_text(text_game_start, "GAME START"));
+}
+
+function draw_end()
+{
+    update_to_top(update_color(musk_game_over, musk_color_translucent));
+    update_to_top(update_text(text_game_over, "GAME OVER"));
+}
+
+function draw_new_game()
+{
+    draw_tile_all();
+    // Undraw game start
+    update_color(musk_game_start, musk_color_invisible);
+    update_text(text_game_start, "");
+}
+
+function draw_game(state)
+{
+    if (state[1] === 0) {
+        draw_tile_all();
+    }
+}
+
+// Game control
+/* ---------------------------------------------------------------- */
+
+function set_tile(obj_idx, type_id, cnt)
+{
+    game_tile_types[obj_idx] = type_id;
+    game_tile_cnts[obj_idx] = cnt;
+}
+
+function reset_tile(obj_idx, type_id)
+{
+    set_tile(obj_idx, type_id, tile_init_cnt[type_id]);
+}
+
 function reduce_tile_cnt(obj_idx)
 {
     if (game_tile_cnts[obj_idx] === 1) {
-        reset_tile_type(obj_idx, 0);
+        reset_tile(obj_idx, 0);
     }
     if (game_tile_cnts[obj_idx] > 1) {
         // Reduce count by 1
         game_tile_cnts[obj_idx] = game_tile_cnts[obj_idx] - 1;
-        const cnt_str = stringify(game_tile_cnts[obj_idx]);
-        update_text(tiles_cnt_obj[obj_idx], cnt_str);
     }
 }
 
@@ -144,30 +205,8 @@ function reduce_tile_cnt_all()
     }
 }
 
-// Update tile
-function update_tile(obj_idx, type_id, cnt)
-{
-    reset_tile_type(obj_idx, type_id);
-    // Cover count
-    update_text(tiles_cnt_obj[obj_idx], cnt > 0 ? stringify(cnt) : "");
-}
-
-// Position offset for content display
-function get_val_pos(i)
-{
-    const offset_x = 0;
-    const offset_y = -40;
-    return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
-}
-
-function get_cnt_pos(i)
-{
-    const offset_x = 0;
-    const offset_y = 40;
-    return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
-}
-
 // Game logic functions
+/* ---------------------------------------------------------------- */
 
 // Direction id: 0 -> up, 1 -> right, 2 -> down, 3 -> left
 const pos_by_dir = [[[0, 3, 6], [1, 4, 7], [2, 5, 8]],
@@ -254,7 +293,7 @@ function move_and_match(dir_id)
     const try_result = try_move_and_match(dir_id);
     if (try_result[2]) {
         for (let i = 0; i < 9; i = i + 1) {
-            update_tile(i, try_result[0][i], try_result[1][i]);
+            set_tile(i, try_result[0][i], try_result[1][i]);
         }
     }
     return try_result[2];
@@ -272,9 +311,11 @@ function add_random_tile()
         }
     }
     
-    const rpos = math_floor(math_random() * 1000) % top;
+    const rpos_idx = math_floor(math_random() * 1000) % top;
+    const rpos = empty_pos[rpos_idx];
     const rtype = (math_random() > 0.9) ? 2 : 1; // 2H for 90%, 4He for 10%
-    reset_tile_type(empty_pos[rpos], rtype);
+    
+    reset_tile(rpos, rtype);
 }
 
 // Check game over
@@ -287,30 +328,59 @@ function game_is_over()
     return !(try_valid[0] || try_valid[1] || try_valid[2] || try_valid[3]);
 }
 
-// Game control
+// External control (call on state switch)
+/* ---------------------------------------------------------------- */
+
 function create_new_game()
 {
-    update_text(text_game_over, "");
     const rpos = math_floor(math_random() * 1000) % 9;
     for (let i = 0; i < 9; i = i + 1) {
-        reset_tile_type(i, 0);
+        reset_tile(i, 0);
     }
-    reset_tile_type(rpos, 1);
+    reset_tile(rpos, 1);
+    
+    draw_new_game();
+}
+
+function start_game()
+{
+    draw_start();
 }
 
 function end_game()
 {
-    update_to_top(background);
-    update_text(text_game_over, "GAME OVER");
-    update_to_top(text_game_over);
+    draw_end();
 }
 
 // On start
+/* ---------------------------------------------------------------- */
 
 // Initialize
 
 // Initialize properties
-update_position(background, [240, 240]);
+
+// Position offset for content display
+function get_val_pos(i)
+{
+    const offset_x = 0;
+    const offset_y = -40;
+    return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
+}
+
+function get_cnt_pos(i)
+{
+    const offset_x = 0;
+    const offset_y = 40;
+    return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
+}
+
+update_position(background, canvas_center);
+update_position(musk_game_start, canvas_center);
+update_position(musk_game_over, canvas_center);
+
+update_position(text_game_start, canvas_center);
+update_position(text_game_over, canvas_center);
+
 for (let i = 0; i < 9; i = i + 1) {
     update_position(tiles_obj[i], grid_pos[i]);
     update_position(tiles_name_obj[i], grid_pos[i]);
@@ -318,9 +388,11 @@ for (let i = 0; i < 9; i = i + 1) {
     update_position(tiles_cnt_obj[i], get_cnt_pos(i));
 }
 
-create_new_game();
+draw_start();
 
 // On update
+/* ---------------------------------------------------------------- */
+
 function get_input()
 {
     if (input_key_down("w") || input_key_down("ArrowUp")) {
@@ -335,42 +407,48 @@ function get_input()
     if (input_key_down("a") || input_key_down("ArrowLeft")) {
         return 3;
     }
-    if (input_key_down("Enter") || input_key_down(" ")) {
+    if (input_left_mouse_down()) {
         return 4;
     }
+    
+    return -1;
 }
 
 // Game state:
 // state[0]: input result in last frame, for debounce
-// state[1]: main state: 0 -> gaming, 1 -> gameover
+// state[1]: main state: 0 -> gaming, 1 -> game over, 2 -> game start
+const init_state = [-1, 2];
 function on_update(state)
 {
     // Initialize state
     for (let i = 0; i < 2; i = i + 1) {
         if (state[i] === undefined) {
-            state[i] = 0;
+            state[i] = init_state[i];
         }
     }
+    
+    // debug_log(stringify(state));
     
     // Handle input
     let input = get_input();
     if (input === state[0]) {
-        input = undefined;
+        input = -1;
     } else {
         state[0] = input;
     }
+    
+    // debug_log(input);
     
     // Valid input
     if (state[1] === 0) { // Gaming
         // Check game over
         if (game_is_over()) {
             end_game();
-            state[1] = 1;
-        } else {
-            state[1] = 0;
+            state[1] = 1; // Switch to game over
+            return 0;
         }
         
-        if (input !== undefined && 0 <= input && input <= 3) {
+        if (0 <= input && input <= 3) {
             const valid_move = move_and_match(input);
             if (valid_move) {
                 reduce_tile_cnt_all();
@@ -379,12 +457,24 @@ function on_update(state)
         }
     }
     if (state[1] === 1) { // Gameover
-        if (input !== undefined && input === 4) {
-            create_new_game();
+        if (input === 4) {
+            start_game();
+            state[1] = 2; // Switch to game start
+            return 0;
         }
     }
+    if (state[1] === 2) { // Game start
+        if (input === 4) {
+            create_new_game();
+            state[1] = 0; // Switch to gaming
+            return 0;
+        }
+    }
+    
+    draw_game(state); // Main canvas control
 }
+// enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
-set_dimensions([480, 480]);
+set_dimensions(canvas_size);
 build_game();
