@@ -41,6 +41,8 @@ const title_over = "GAME OVER";
 const title_win = "YOU WIN!";
 
 // Colors
+const invisible = [0, 0, 0, 0];
+
 const background_color = [187, 173, 160, 255];
 
 const content_color_light = [249, 246, 242, 255];
@@ -85,42 +87,18 @@ const tile_is_unstable = [0, 0, 0, 1, 0, 1, 0, 1, 0];
 const background = update_color(create_rectangle(scale, scale), background_color);
 
 // Tiles
-const tiles_obj = [create_circle(grid_radius),
-                   create_circle(grid_radius),
-                   create_circle(grid_radius),
-                   create_circle(grid_radius),
-                   create_circle(grid_radius),
-                   create_circle(grid_radius),
-                   create_circle(grid_radius),
-                   create_circle(grid_radius),
-                   create_circle(grid_radius)];
-const tiles_val_obj = [update_scale(create_text(""), content_val_size),
-                       update_scale(create_text(""), content_val_size),
-                       update_scale(create_text(""), content_val_size),
-                       update_scale(create_text(""), content_val_size),
-                       update_scale(create_text(""), content_val_size),
-                       update_scale(create_text(""), content_val_size),
-                       update_scale(create_text(""), content_val_size),
-                       update_scale(create_text(""), content_val_size),
-                       update_scale(create_text(""), content_val_size)];
-const tiles_name_obj = [update_scale(create_text(""), content_name_size),
-                        update_scale(create_text(""), content_name_size),
-                        update_scale(create_text(""), content_name_size),
-                        update_scale(create_text(""), content_name_size),
-                        update_scale(create_text(""), content_name_size),
-                        update_scale(create_text(""), content_name_size),
-                        update_scale(create_text(""), content_name_size),
-                        update_scale(create_text(""), content_name_size),
-                        update_scale(create_text(""), content_name_size)];
-const tiles_cnt_obj = [update_scale(create_text(""), content_cnt_size),
-                       update_scale(create_text(""), content_cnt_size),
-                       update_scale(create_text(""), content_cnt_size),
-                       update_scale(create_text(""), content_cnt_size),
-                       update_scale(create_text(""), content_cnt_size),
-                       update_scale(create_text(""), content_cnt_size),
-                       update_scale(create_text(""), content_cnt_size),
-                       update_scale(create_text(""), content_cnt_size),
-                       update_scale(create_text(""), content_cnt_size)];
+const tiles_obj = [];
+const tiles_val_obj = [];
+const tiles_name_obj = [];
+const tiles_cnt_obj = [];
+
+for (let i = 0; i < 9; i = i + 1) {
+    tiles_obj[i] = create_circle(grid_radius);
+    tiles_val_obj[i] = update_scale(create_text(""), content_val_size);
+    tiles_name_obj[i] = update_scale(create_text(""), content_name_size);
+    tiles_cnt_obj[i] = update_scale(create_text(""), content_cnt_size);
+}
+
 // Musks
 const musk_game_start = update_color(create_rectangle(scale, scale), musk_color_invisible);
 const musk_game_over = update_color(create_rectangle(scale, scale), musk_color_invisible);
@@ -134,11 +112,87 @@ const text_game_over = update_color(update_scale(create_text(""),
 const text_game_win = update_color(update_scale(create_text(""),
                       content_title_size), content_color_dark);
 
+// Animators
+const anim_emerge_obj = [];
+const anim_vanish_obj = [];
+const anim_track_obj = [];
+const anim_merge_obj = [];
+
+for (let i = 0; i < 9; i = i + 1) {
+    anim_emerge_obj[i] = update_color(create_circle(grid_radius), invisible);
+    anim_vanish_obj[i] = update_color(create_circle(grid_radius), invisible);
+    anim_track_obj[i] = update_color(create_circle(grid_radius), invisible);
+    anim_merge_obj[i] = update_color(create_circle(grid_radius), invisible);
+}
+
 // Game data
 /* ---------------------------------------------------------------- */
 
 const game_tile_types = [];
 const game_tile_cnts = [];
+
+// Animation system
+/* ---------------------------------------------------------------- */
+
+// Timers
+const anim_move_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+const anim_emerge_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+const anim_merge_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+const anim_vanish_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+const anim_emerge_fcnt = 3;
+const anim_vanish_fcnt = 3;
+
+function anim_is_playing()
+{
+    let flag = false;
+    for (let i = 0; i < 9; i = i + 1) {
+        if (anim_move_timer[i] > 0 || anim_emerge_timer[i] > 0 ||
+            anim_merge_timer[i] > 0 || anim_vanish_timer[i] > 0) {
+            flag = true;
+            break;
+        }
+    }
+    return flag;
+}
+
+// Emerge animation
+function anim_emerge(obj_idx)
+{
+    if (anim_emerge_timer[obj_idx] === anim_emerge_fcnt) {
+        // Animation start
+        update_color(anim_emerge_obj[obj_idx], tile_colors[game_tile_types[obj_idx]]);
+    }
+    if (anim_emerge_timer[obj_idx] > 0) {
+        // 3 -> 0.25, 2 -> 0.5, 1 -> 0.75
+        const scale_serial = [undefined, [0.75, 0.75], [0.5, 0.5], [0.25, 0.25]];
+        update_scale(anim_emerge_obj[obj_idx], scale_serial[anim_emerge_timer[obj_idx]]);
+        anim_emerge_timer[obj_idx] = anim_emerge_timer[obj_idx] - 1;
+    }
+}
+
+function anim_emerge_all()
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        anim_emerge(i);
+    }
+}
+
+// Main animation function
+function anim_play_all()
+{
+    anim_emerge_all();
+}
+
+function anim_clear_all()
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        update_color(anim_emerge_obj[i], invisible);
+        update_color(anim_vanish_obj[i], invisible);
+        update_color(anim_merge_obj[i], invisible);
+        update_color(anim_track_obj[i], invisible);
+    }
+}
 
 // Draw (based on game data)
 /* ---------------------------------------------------------------- */
@@ -332,7 +386,7 @@ function move_and_match(dir_id)
 }
 
 // Add random tile
-function add_random_tile()
+function emerge_random_tile()
 {
     const empty_pos = [];
     let top = 0;
@@ -348,6 +402,7 @@ function add_random_tile()
     const rtype = (math_random() > 0.9) ? 2 : 1; // 2H for 90%, 4He for 10%
     
     reset_tile(rpos, rtype);
+    anim_emerge_timer[rpos] = anim_emerge_fcnt; // Call animator
 }
 
 // Check game over
@@ -402,41 +457,50 @@ function end_game_win()
 // On start
 /* ---------------------------------------------------------------- */
 
-// Initialize
+// Initialization
 
-// Initialize properties
-
-// Position offset for content display
-function get_val_pos(i)
+function init_pos_all()
 {
-    const offset_x = 0;
-    const offset_y = -20 * scale_base;
-    return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
+    // Position offset for content display
+    function get_val_pos(i)
+    {
+        const offset_x = 0;
+        const offset_y = -20 * scale_base;
+        return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
+    }
+    
+    function get_cnt_pos(i)
+    {
+        const offset_x = 0;
+        const offset_y = 20 * scale_base;
+        return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
+    }
+    
+    // Initial positions
+    update_position(background, canvas_center);
+    update_position(musk_game_start, canvas_center);
+    update_position(musk_game_over, canvas_center);
+    update_position(musk_game_win, canvas_center);
+    
+    update_position(text_game_start, canvas_center);
+    update_position(text_game_over, canvas_center);
+    update_position(text_game_win, canvas_center);
+    
+    for (let i = 0; i < 9; i = i + 1) {
+        // Tiles
+        update_position(tiles_obj[i], grid_pos[i]);
+        update_position(tiles_name_obj[i], grid_pos[i]);
+        update_position(tiles_val_obj[i], get_val_pos(i));
+        update_position(tiles_cnt_obj[i], get_cnt_pos(i));
+        // Animators
+        update_position(anim_emerge_obj[i], grid_pos[i]);
+        update_position(anim_vanish_obj[i], grid_pos[i]);
+        update_position(anim_track_obj[i], grid_pos[i]);
+        update_position(anim_merge_obj[i], grid_pos[i]);
+    }
 }
 
-function get_cnt_pos(i)
-{
-    const offset_x = 0;
-    const offset_y = 20 * scale_base;
-    return [grid_pos[i][0] + offset_x, grid_pos[i][1] + offset_y];
-}
-
-update_position(background, canvas_center);
-update_position(musk_game_start, canvas_center);
-update_position(musk_game_over, canvas_center);
-update_position(musk_game_win, canvas_center);
-
-update_position(text_game_start, canvas_center);
-update_position(text_game_over, canvas_center);
-update_position(text_game_win, canvas_center);
-
-for (let i = 0; i < 9; i = i + 1) {
-    update_position(tiles_obj[i], grid_pos[i]);
-    update_position(tiles_name_obj[i], grid_pos[i]);
-    update_position(tiles_val_obj[i], get_val_pos(i));
-    update_position(tiles_cnt_obj[i], get_cnt_pos(i));
-}
-
+init_pos_all();
 draw_start();
 
 // On update
@@ -466,7 +530,9 @@ function get_input()
 // Game state:
 // state[0]: input result in last frame, for debounce
 // state[1]: main state: 0 -> game start, 1 -> gaming, 
-//                       2 -> game over, 3 -> game win
+//                       2 -> game over, 3 -> game win,
+//                       4 -> playing animation
+
 const init_state = [-1, 0];
 function on_update(state)
 {
@@ -477,8 +543,6 @@ function on_update(state)
         }
     }
     
-    // debug_log(stringify(state));
-    
     // Handle input
     let input = get_input();
     if (input === state[0]) {
@@ -487,52 +551,73 @@ function on_update(state)
         state[0] = input;
     }
     
-    // debug_log(input);
-    
-    if (state[1] === 0) { // Game start
-        if (input === 4) {
-            create_new_game();
-            state[1] = 1; // Switch to gaming
-            return 0;
+    // FSM manager
+    function update_state(state)
+    {
+        if (state[1] === 0) {
+            if (input === 4) {
+                create_new_game();
+                state[1] = 1; // Switch to gaming
+                return 1;
+            }
         }
+        if (state[1] === 1) {
+            // Check game over
+            if (game_is_over()) {
+                end_game_over();
+                state[1] = 2; // Switch to game over
+                return 1;
+            }
+            // Check game win
+            if (game_is_win()) {
+                end_game_win();
+                state[1] = 3; // Switch to game win
+                return 1;
+            }
+            // Check animation playing
+            if (anim_is_playing()) {
+                state[1] = 4;
+                return 1;
+            }
+        }
+        if (state[1] === 2) { // Game over
+            if (input === 4) {
+                start_game();
+                state[1] = 0; // Switch to game start
+                return 1;
+            }
+        }
+        if (state[1] === 3) { // Game win
+            if (input === 4) {
+                start_game();
+                state[1] = 0; // Switch to game start
+                return 1;
+            }
+        }
+        if (state[1] === 4) { // Animation is playing
+            if (!anim_is_playing()) { // Animation over
+                anim_clear_all();
+                state[1] = 1; // Switch to gaming
+                return 1;
+            }
+            anim_play_all();
+        }
+        return 0; // State unchanged
     }
+    
+    // Game control
     if (state[1] === 1) { // Gaming
-        // Check game over
-        if (game_is_over()) {
-            end_game_over();
-            state[1] = 2; // Switch to game over
-            return 0;
-        }
-        // Check game win
-        if (game_is_win()) {
-            end_game_win();
-            state[1] = 3; // Switch to game win
-            return 0;
-        }
-        
         if (0 <= input && input <= 3) {
             const valid_move = move_and_match(input);
             if (valid_move) {
                 reduce_tile_cnt_all();
-                add_random_tile();
+                emerge_random_tile();
             }
         }
     }
-    if (state[1] === 2) { // Game over
-        if (input === 4) {
-            start_game();
-            state[1] = 0; // Switch to game start
-            return 0;
-        }
-    }
-    if (state[1] === 3) { // Game win
-        if (input === 4) {
-            start_game();
-            state[1] = 0; // Switch to game start
-            return 0;
-        }
-    }
     
+    // Update FSM
+    update_state(state);
     
     draw_game(state); // Main canvas control
 }
