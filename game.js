@@ -35,6 +35,11 @@ const content_name_size = [2 * scale_base, 2 * scale_base];
 const content_val_size = [scale_base, scale_base];
 const content_cnt_size = [scale_base, scale_base];
 
+// Texts
+const title_start = "ISO256PRO";
+const title_over = "GAME OVER";
+const title_win = "YOU WIN!";
+
 // Colors
 const background_color = [187, 173, 160, 255];
 
@@ -46,8 +51,9 @@ const musk_color_translucent = [249, 246, 242, 128];
 const musk_color_solid = [249, 246, 242, 255];
 
 // Tile properties by type
-// 0 -> empty, 1 -> 2H, 2 -> 4He, 3 -> 8Be(NS), 4 -> 16O
-// 5 -> 32P(NS), 6 -> 64Ni, 7 -> 128Sn(NS), 8 -> 256No
+// Indices (U for unstable):
+// 0 -> empty, 1 -> 2H, 2 -> 4He, 3 -> 8Be(U), 4 -> 16O
+// 5 -> 32P(U), 6 -> 64Ni, 7 -> 128Sn(U), 8 -> 256No
 const tile_colors = [[205, 193, 180, 255],
                      [238, 228, 218, 255],
                      [237, 224, 200, 255],
@@ -70,6 +76,7 @@ const tile_names = ["", "H", "He", "Be", "O", "P", "Ni", "Sn", "No"];
 const tile_val_strs = ["", "2", "4", "8", "16", "32", "64", "128", "256"];
 const tile_init_cnt = [-1, -1, -1, 6, -1, 24, -1, 96, -1];
 const tile_init_cnt_strs = ["", "", "", "5", "", "23", "", "95", ""];
+const tile_is_unstable = [0, 0, 0, 1, 0, 1, 0, 1, 0];
 
 // Create game objects
 /* ---------------------------------------------------------------- */
@@ -117,20 +124,23 @@ const tiles_cnt_obj = [update_scale(create_text(""), content_cnt_size),
 // Musks
 const musk_game_start = update_color(create_rectangle(scale, scale), musk_color_invisible);
 const musk_game_over = update_color(create_rectangle(scale, scale), musk_color_invisible);
+const musk_game_win = update_color(create_rectangle(scale, scale), musk_color_invisible);
 
 // Texts
 const text_game_start = update_color(update_scale(create_text(""),
                         content_title_size), content_color_dark);
 const text_game_over = update_color(update_scale(create_text(""),
                        content_title_size), content_color_dark);
+const text_game_win = update_color(update_scale(create_text(""),
+                      content_title_size), content_color_dark);
 
-// Game states
+// Game data
 /* ---------------------------------------------------------------- */
 
 const game_tile_types = [];
 const game_tile_cnts = [];
 
-// Draw (based on game states)
+// Draw (based on game data)
 /* ---------------------------------------------------------------- */
 
 function draw_tile(obj_idx, type_id, cnt)
@@ -160,15 +170,24 @@ function draw_start()
     // Undraw game over
     update_color(musk_game_over, musk_color_invisible);
     update_text(text_game_over, "");
+    // Undraw game win
+    update_color(musk_game_win, musk_color_invisible);
+    update_text(text_game_win, "");
     // Draw game start
     update_to_top(update_color(musk_game_start, musk_color_solid));
-    update_to_top(update_text(text_game_start, "GAME START"));
+    update_to_top(update_text(text_game_start, title_start));
 }
 
-function draw_end()
+function draw_over()
 {
     update_to_top(update_color(musk_game_over, musk_color_translucent));
-    update_to_top(update_text(text_game_over, "GAME OVER"));
+    update_to_top(update_text(text_game_over, title_over));
+}
+
+function draw_win()
+{
+    update_to_top(update_color(musk_game_win, musk_color_translucent));
+    update_to_top(update_text(text_game_win, title_win));
 }
 
 function draw_new_game()
@@ -181,7 +200,7 @@ function draw_new_game()
 
 function draw_game(state)
 {
-    if (state[1] === 0) {
+    if (state[1] === 1) {
         draw_tile_all();
     }
 }
@@ -341,6 +360,16 @@ function game_is_over()
     return !(try_valid[0] || try_valid[1] || try_valid[2] || try_valid[3]);
 }
 
+function game_is_win()
+{
+    for (let i = 0; i < 9 ; i = i + 1) {
+        if (game_tile_types[i] === 8) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // External control (call on state switch)
 /* ---------------------------------------------------------------- */
 
@@ -360,9 +389,14 @@ function start_game()
     draw_start();
 }
 
-function end_game()
+function end_game_over()
 {
-    draw_end();
+    draw_over();
+}
+
+function end_game_win()
+{
+    draw_win();
 }
 
 // On start
@@ -390,9 +424,11 @@ function get_cnt_pos(i)
 update_position(background, canvas_center);
 update_position(musk_game_start, canvas_center);
 update_position(musk_game_over, canvas_center);
+update_position(musk_game_win, canvas_center);
 
 update_position(text_game_start, canvas_center);
 update_position(text_game_over, canvas_center);
+update_position(text_game_win, canvas_center);
 
 for (let i = 0; i < 9; i = i + 1) {
     update_position(tiles_obj[i], grid_pos[i]);
@@ -429,8 +465,9 @@ function get_input()
 
 // Game state:
 // state[0]: input result in last frame, for debounce
-// state[1]: main state: 0 -> gaming, 1 -> game over, 2 -> game start
-const init_state = [-1, 2];
+// state[1]: main state: 0 -> game start, 1 -> gaming, 
+//                       2 -> game over, 3 -> game win
+const init_state = [-1, 0];
 function on_update(state)
 {
     // Initialize state
@@ -452,12 +489,24 @@ function on_update(state)
     
     // debug_log(input);
     
-    // Valid input
-    if (state[1] === 0) { // Gaming
+    if (state[1] === 0) { // Game start
+        if (input === 4) {
+            create_new_game();
+            state[1] = 1; // Switch to gaming
+            return 0;
+        }
+    }
+    if (state[1] === 1) { // Gaming
         // Check game over
         if (game_is_over()) {
-            end_game();
-            state[1] = 1; // Switch to game over
+            end_game_over();
+            state[1] = 2; // Switch to game over
+            return 0;
+        }
+        // Check game win
+        if (game_is_win()) {
+            end_game_win();
+            state[1] = 3; // Switch to game win
             return 0;
         }
         
@@ -469,20 +518,21 @@ function on_update(state)
             }
         }
     }
-    if (state[1] === 1) { // Gameover
+    if (state[1] === 2) { // Game over
         if (input === 4) {
             start_game();
-            state[1] = 2; // Switch to game start
+            state[1] = 0; // Switch to game start
             return 0;
         }
     }
-    if (state[1] === 2) { // Game start
+    if (state[1] === 3) { // Game win
         if (input === 4) {
-            create_new_game();
-            state[1] = 0; // Switch to gaming
+            start_game();
+            state[1] = 0; // Switch to game start
             return 0;
         }
     }
+    
     
     draw_game(state); // Main canvas control
 }
