@@ -115,13 +115,15 @@ const text_game_win = update_color(update_scale(create_text(""),
 // Animators
 const anim_emerge_obj = [];
 const anim_vanish_obj = [];
-const anim_track_obj = [];
+const anim_move_obj = [];
 const anim_merge_obj = [];
+const anim_hide_obj = [];
 
 for (let i = 0; i < 9; i = i + 1) {
+    anim_hide_obj[i] = update_color(create_circle(grid_radius), invisible);
     anim_emerge_obj[i] = update_color(create_circle(grid_radius), invisible);
     anim_vanish_obj[i] = update_color(create_circle(grid_radius), invisible);
-    anim_track_obj[i] = update_color(create_circle(grid_radius), invisible);
+    anim_move_obj[i] = update_color(create_circle(grid_radius), invisible);
     anim_merge_obj[i] = update_color(create_circle(grid_radius), invisible);
 }
 
@@ -140,32 +142,79 @@ const anim_emerge_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 const anim_merge_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 const anim_vanish_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
+const anim_move_fcnt = 3;
 const anim_emerge_fcnt = 3;
 const anim_vanish_fcnt = 3;
 
-function anim_is_playing()
+// Helper functions
+function anim_hide_tile(obj_idx)
 {
-    let flag = false;
-    for (let i = 0; i < 9; i = i + 1) {
-        if (anim_move_timer[i] > 0 || anim_emerge_timer[i] > 0 ||
-            anim_merge_timer[i] > 0 || anim_vanish_timer[i] > 0) {
-            flag = true;
-            break;
-        }
+    update_color(anim_hide_obj[obj_idx], tile_colors[0]);
+}
+
+// Move animation
+const anim_move_dis = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // Move distance in grids
+let anim_move_dir = -1; // Move direction
+
+function anim_move(obj_idx) // 2 frames
+{
+    function get_dest(dis, dir)
+    {
+        const offset = dir === 0 ? -3 * dis
+                      : dir === 1 ? dis
+                      : dir === 2 ? 3 * dis
+                      : dir === 3 ? -dis : 0;
+        return obj_idx + offset;
     }
-    return flag;
+    const dest = get_dest(anim_move_dis[obj_idx], anim_move_dir);
+    
+    if (anim_move_timer[obj_idx] === anim_move_fcnt) {
+        // Animation start
+        anim_hide_tile(obj_idx);
+        update_color(anim_move_obj[obj_idx], tile_colors[game_tile_types[dest]]);
+    }
+    
+    function get_track_pos(idx, dis, dir)
+    {
+        const orig_pos = grid_pos[obj_idx];
+        const dest_pos = grid_pos[dest];
+        
+        const dx = dest_pos[0] - orig_pos[0];
+        const dy = dest_pos[1] - orig_pos[1];
+        
+        const track_p1 = [orig_pos[0] + math_floor(0.25 * dx),
+                          orig_pos[1] + math_floor(0.25 * dy)];
+        const track_p2 = [orig_pos[0] + math_floor(0.75 * dx),
+                          orig_pos[1] + math_floor(0.75 * dy)];
+        
+        return [undefined, dest_pos, track_p2, track_p1];
+    }
+    
+    if (anim_move_timer[obj_idx] > 0) {
+        const pos = get_track_pos(obj_idx, anim_move_dis[obj_idx], anim_move_dir);
+        debug_log("move pos: " + stringify(pos));
+        update_position(anim_move_obj[obj_idx], pos[anim_move_timer[obj_idx]]);
+        anim_move_timer[obj_idx] = anim_move_timer[obj_idx] - 1;
+    }
+}
+
+function anim_move_all()
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        anim_move(i);
+    }
 }
 
 // Emerge animation
-function anim_emerge(obj_idx)
+function anim_emerge(obj_idx) // 4 frames
 {
     if (anim_emerge_timer[obj_idx] === anim_emerge_fcnt) {
         // Animation start
+        anim_hide_tile(obj_idx);
         update_color(anim_emerge_obj[obj_idx], tile_colors[game_tile_types[obj_idx]]);
     }
     if (anim_emerge_timer[obj_idx] > 0) {
-        // 3 -> 0.25, 2 -> 0.5, 1 -> 0.75
-        const scale_serial = [undefined, [0.75, 0.75], [0.5, 0.5], [0.25, 0.25]];
+        const scale_serial = [undefined, [0.9, 0.9], [0.7, 0.7], [0.4, 0.4]];
         update_scale(anim_emerge_obj[obj_idx], scale_serial[anim_emerge_timer[obj_idx]]);
         anim_emerge_timer[obj_idx] = anim_emerge_timer[obj_idx] - 1;
     }
@@ -178,20 +227,117 @@ function anim_emerge_all()
     }
 }
 
-// Main animation function
-function anim_play_all()
+// Vanish animation
+const anim_vanish_type = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+function anim_vanish(obj_idx) // 2 frames
 {
-    anim_emerge_all();
+    if (anim_vanish_timer[obj_idx] === anim_vanish_fcnt) {
+        // Animation start
+        anim_hide_tile(obj_idx);
+        update_color(anim_vanish_obj[obj_idx], tile_colors[anim_vanish_type[obj_idx]]);
+    }
+    if (anim_vanish_timer[obj_idx] > 0) {
+        const scale_serial = [undefined, [0, 0], [0.4, 0.4], [0.9, 0.9]];
+        update_scale(anim_vanish_obj[obj_idx], scale_serial[anim_vanish_timer[obj_idx]]);
+        anim_vanish_timer[obj_idx] = anim_vanish_timer[obj_idx] - 1;
+    }
+}
+
+function anim_vanish_all()
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        anim_vanish(i);
+    }
+}
+
+// Main animation function
+function anim_play_all(state)
+{
+    anim_update_state();
+    if (state[1] === 4) { // Gaming animations
+        if (anim_state === 1) {
+            anim_move_all();
+            anim_vanish_all();
+        }
+        if (anim_state === 2) {
+            anim_emerge_all();
+        }
+    }
+}
+
+function anim_clear(obj)
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        update_color(obj[i], invisible);
+        update_color(obj[i], invisible);
+    }
 }
 
 function anim_clear_all()
 {
+    anim_clear(anim_move_obj);
+    anim_clear(anim_vanish_obj);
+    anim_clear(anim_emerge_obj);
+    anim_clear(anim_merge_obj);
+    anim_clear(anim_hide_obj);
+}
+
+// Animation state control: 0 -> not playing,
+//                          1 -> top order anims, 2 -> second order anims...
+let anim_state = 0;
+// Play order: (vanish / move) -> (emerge / merge)
+
+// State controls
+
+function anim_is_playing()
+{
+    let flag = false;
     for (let i = 0; i < 9; i = i + 1) {
-        update_color(anim_emerge_obj[i], invisible);
-        update_color(anim_vanish_obj[i], invisible);
-        update_color(anim_merge_obj[i], invisible);
-        update_color(anim_track_obj[i], invisible);
+        if (anim_move_timer[i] > 0 || anim_emerge_timer[i] > 0 ||
+            anim_merge_timer[i] > 0 || anim_vanish_timer[i] > 0) {
+            flag = true;
+            break;
+        }
     }
+    debug_log(flag ? "anim on" : "anim off");
+    return flag;
+}
+
+function anim_update_state()
+{
+    if (anim_state === 0) {
+        for (let i = 0; i < 9; i = i + 1) {
+            if (anim_move_timer[i] > 0 || anim_vanish_timer[i] > 0) {
+                anim_state = 1; // Switch to top order anims
+                return 1;
+            }
+        }
+    }
+    if (anim_state === 1) {
+        let flag1 = true;
+        let flag2 = false;
+        for (let i = 0; i < 9; i = i + 1) {
+            if (anim_move_timer[i] > 0 || anim_vanish_timer[i] > 0) {
+                flag1 = false;
+            }
+            if (anim_emerge_timer[i] > 0 || anim_merge_timer[i] > 0) {
+                flag2 = true;
+            }
+        }
+        // Switch to state 2 if
+        // State 1 anims all played and state 2 anims to be played
+        if (flag1 && flag2) {
+            // anim_clear(anim_move_obj); // Reset animation
+            anim_state = 2;
+            return 1;
+        }
+    }
+    if (!anim_is_playing()) { // All anims played
+        anim_state = 0;
+    }
+    
+    debug_log(anim_state);
 }
 
 // Draw (based on game data)
@@ -276,6 +422,8 @@ function reset_tile(obj_idx, type_id)
 function reduce_tile_cnt(obj_idx)
 {
     if (game_tile_cnts[obj_idx] === 1) {
+        anim_vanish_timer[obj_idx] = anim_vanish_fcnt; // Call animator
+        anim_vanish_type[obj_idx] = game_tile_types[obj_idx];
         reset_tile(obj_idx, 0);
     }
     if (game_tile_cnts[obj_idx] > 1) {
@@ -299,6 +447,7 @@ const pos_by_dir = [[[0, 3, 6], [1, 4, 7], [2, 5, 8]],
                     [[2, 1, 0], [5, 4, 3], [8, 7, 6]],
                     [[8, 5, 2], [7, 4, 1], [6, 3, 0]],
                     [[0, 1, 2], [3, 4, 5], [6, 7, 8]]];
+
 function try_move_and_match(dir_id)
 {
     const lines = pos_by_dir[dir_id];
@@ -373,13 +522,88 @@ function try_move_and_match(dir_id)
     return [result_tile_types, result_tile_cnts, flag];
 }
 
+function dis_by_line(bef, aft)
+{
+    const tmp1 = []; // Stack for none-empty [index, type] in bef
+    let top1 = 0;
+    const tmp2 = []; // Same but aft
+    let top2 = 0;
+    
+    const dest = [-1, -1, -1]; // Index of destination
+    
+    for (let i = 0; i < 3; i = i + 1) {
+        if (bef[i] !== 0) {
+            tmp1[top1] = [i, bef[i]];
+            top1 = top1 + 1;
+        }
+        if (aft[i] !== 0) {
+            tmp2[top2] = [i, aft[i]];
+            top2 = top2 + 1;
+        }
+    }
+    
+    let p1 = 0;
+    for (let p2 = 0; p2 < top2; p2 = p2 + 1) {
+        if (p1 >= 3) {
+            break;
+        }
+        // The key is for each tile in tmp2, find its corresponding tile in tmp1
+        if (tmp1[p1][1] === tmp2[p2][1]) { // Not merged
+            dest[tmp1[p1][0]] = tmp2[p2][0];
+            p1 = p1 + 1;
+            continue;
+        }
+        if (p1 <= 1 && tmp1[p1][1] + 1 === tmp2[p2][1] &&
+            tmp1[p1][1] === tmp1[p1 + 1][1]) { // Merged
+            dest[tmp1[p1][0]] = tmp2[p2][0];
+            dest[tmp1[p1 + 1][0]] = tmp2[p2][0];
+            p1 = p1 + 2;
+            continue;
+        }
+    }
+
+    const dis = [0, 0, 0]; // Move distance in index
+    for (let i = 0; i < 3; i = i + 1) {
+        dis[i] = dest[i] === -1 ? 0 : i - dest[i];
+    }
+    
+    return dis;
+}
+
+function set_move_dis(before, after, dir_id, res) // For move animation
+{
+    const lines = pos_by_dir[dir_id];
+    for (let i = 0; i < 3; i = i + 1) {
+        const line = lines[i];
+        const line_before = [before[line[0]], before[line[1]], before[line[2]]];
+        const line_after = [after[line[0]], after[line[1]], after[line[2]]];
+        
+        const line_dis = dis_by_line(line_before, line_after);
+
+        for (let j = 0; j < 3; j = j + 1) {
+            res[line[j]] = line_dis[j];
+        }
+    }
+    return res;
+}
+
 function move_and_match(dir_id)
 {
     // [0]: type, [1]: cnt, [2]: flag
     const try_result = try_move_and_match(dir_id);
     if (try_result[2]) {
+        // Calculate info for move animation
+        set_move_dis(game_tile_types, try_result[0], dir_id, anim_move_dis);
+        debug_log("move dis: " + stringify(anim_move_dis));
+        anim_move_dir = dir_id;
         for (let i = 0; i < 9; i = i + 1) {
-            set_tile(i, try_result[0][i], try_result[1][i]);
+            if (anim_move_dis[i] !== 0) {
+                anim_move_timer[i] = anim_move_fcnt; // Call animator
+            }
+        }
+        
+        for (let i = 0; i < 9; i = i + 1) {
+            set_tile(i, try_result[0][i], try_result[1][i]); // Update game
         }
     }
     return try_result[2];
@@ -495,8 +719,9 @@ function init_pos_all()
         // Animators
         update_position(anim_emerge_obj[i], grid_pos[i]);
         update_position(anim_vanish_obj[i], grid_pos[i]);
-        update_position(anim_track_obj[i], grid_pos[i]);
+        update_position(anim_move_obj[i], grid_pos[i]);
         update_position(anim_merge_obj[i], grid_pos[i]);
+        update_position(anim_hide_obj[i], grid_pos[i]);
     }
 }
 
@@ -505,6 +730,8 @@ draw_start();
 
 // On update
 /* ---------------------------------------------------------------- */
+
+let input = -1;
 
 function get_input()
 {
@@ -527,11 +754,76 @@ function get_input()
     return -1;
 }
 
+function global_debug()
+{
+    debug_log("fcnt: " + stringify(get_loop_count()));
+    debug_log("anim state " + stringify(anim_state));
+    debug_log("move t: " + stringify(anim_move_timer));
+    debug_log("emerge t" + stringify(anim_emerge_timer));
+    debug_log("vanish t" + stringify(anim_vanish_timer));
+}
+
 // Game state:
 // state[0]: input result in last frame, for debounce
 // state[1]: main state: 0 -> game start, 1 -> gaming, 
 //                       2 -> game over, 3 -> game win,
 //                       4 -> playing animation
+
+// FSM manager
+function update_state(state)
+{
+    debug_log("game state " + stringify(state));
+    
+    if (state[1] === 0) {
+        if (input === 4) {
+            create_new_game();
+            state[1] = 1; // Switch to gaming
+            return 1;
+        }
+    }
+    if (state[1] === 1) {
+        // Check game over
+        if (game_is_over()) {
+            end_game_over();
+            state[1] = 2; // Switch to game over
+            return 1;
+        }
+        // Check game win
+        if (game_is_win()) {
+            end_game_win();
+            state[1] = 3; // Switch to game win
+            return 1;
+        }
+        // Check animation playing
+        if (anim_is_playing()) {
+            debug_log("GS checking anim");
+            state[1] = 4;
+            return 1;
+        }
+    }
+    if (state[1] === 2) { // Game over
+        if (input === 4) {
+            start_game();
+            state[1] = 0; // Switch to game start
+            return 1;
+        }
+    }
+    if (state[1] === 3) { // Game win
+        if (input === 4) {
+            start_game();
+            state[1] = 0; // Switch to game start
+            return 1;
+        }
+    }
+    if (state[1] === 4) { // Animation is playing
+        if (!anim_is_playing()) { // Animation over
+            anim_clear_all();
+            state[1] = 1; // Switch to gaming
+            return 1;
+        }
+    }
+    return 0; // State unchanged
+}
 
 const init_state = [-1, 0];
 function on_update(state)
@@ -543,67 +835,21 @@ function on_update(state)
         }
     }
     
-    // Handle input
-    let input = get_input();
+    // Update FSM
+    update_state(state);
+    
+    anim_play_all(state);
+    draw_game(state); // Main canvas control
+    
+    // Handle inputa
+    input = get_input();
     if (input === state[0]) {
         input = -1;
     } else {
         state[0] = input;
     }
     
-    // FSM manager
-    function update_state(state)
-    {
-        if (state[1] === 0) {
-            if (input === 4) {
-                create_new_game();
-                state[1] = 1; // Switch to gaming
-                return 1;
-            }
-        }
-        if (state[1] === 1) {
-            // Check game over
-            if (game_is_over()) {
-                end_game_over();
-                state[1] = 2; // Switch to game over
-                return 1;
-            }
-            // Check game win
-            if (game_is_win()) {
-                end_game_win();
-                state[1] = 3; // Switch to game win
-                return 1;
-            }
-            // Check animation playing
-            if (anim_is_playing()) {
-                state[1] = 4;
-                return 1;
-            }
-        }
-        if (state[1] === 2) { // Game over
-            if (input === 4) {
-                start_game();
-                state[1] = 0; // Switch to game start
-                return 1;
-            }
-        }
-        if (state[1] === 3) { // Game win
-            if (input === 4) {
-                start_game();
-                state[1] = 0; // Switch to game start
-                return 1;
-            }
-        }
-        if (state[1] === 4) { // Animation is playing
-            if (!anim_is_playing()) { // Animation over
-                anim_clear_all();
-                state[1] = 1; // Switch to gaming
-                return 1;
-            }
-            anim_play_all();
-        }
-        return 0; // State unchanged
-    }
+    debug_log("input " + stringify(input));
     
     // Game control
     if (state[1] === 1) { // Gaming
@@ -616,13 +862,12 @@ function on_update(state)
         }
     }
     
-    // Update FSM
-    update_state(state);
-    
-    draw_game(state); // Main canvas control
+    global_debug();
 }
+
 // enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
+// set_fps(1);
 set_dimensions(canvas_size);
 build_game();
