@@ -121,9 +121,9 @@ const anim_hide_obj = [];
 
 for (let i = 0; i < 9; i = i + 1) {
     anim_hide_obj[i] = update_color(create_circle(grid_radius), invisible);
-    anim_emerge_obj[i] = update_color(create_circle(grid_radius), invisible);
     anim_vanish_obj[i] = update_color(create_circle(grid_radius), invisible);
     anim_move_obj[i] = update_color(create_circle(grid_radius), invisible);
+    anim_emerge_obj[i] = update_color(create_circle(grid_radius), invisible);
     anim_merge_obj[i] = update_color(create_circle(grid_radius), invisible);
 }
 
@@ -142,8 +142,10 @@ const anim_emerge_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 const anim_merge_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 const anim_vanish_timer = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
+// Frame number
 const anim_move_fcnt = 3;
 const anim_emerge_fcnt = 3;
+const anim_merge_fcnt = 4;
 const anim_vanish_fcnt = 3;
 
 // Helper functions
@@ -153,10 +155,11 @@ function anim_hide_tile(obj_idx)
 }
 
 // Move animation
+const anim_move_type = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 const anim_move_dis = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // Move distance in grids
 let anim_move_dir = -1; // Move direction
 
-function anim_move(obj_idx) // 2 frames
+function anim_move(obj_idx)
 {
     function get_dest(dis, dir)
     {
@@ -171,7 +174,7 @@ function anim_move(obj_idx) // 2 frames
     if (anim_move_timer[obj_idx] === anim_move_fcnt) {
         // Animation start
         anim_hide_tile(obj_idx);
-        update_color(anim_move_obj[obj_idx], tile_colors[game_tile_types[dest]]);
+        update_color(anim_move_obj[obj_idx], tile_colors[anim_move_type[obj_idx]]);
     }
     
     function get_track_pos(idx, dis, dir)
@@ -192,7 +195,6 @@ function anim_move(obj_idx) // 2 frames
     
     if (anim_move_timer[obj_idx] > 0) {
         const pos = get_track_pos(obj_idx, anim_move_dis[obj_idx], anim_move_dir);
-        debug_log("move pos: " + stringify(pos));
         update_position(anim_move_obj[obj_idx], pos[anim_move_timer[obj_idx]]);
         anim_move_timer[obj_idx] = anim_move_timer[obj_idx] - 1;
     }
@@ -206,7 +208,7 @@ function anim_move_all()
 }
 
 // Emerge animation
-function anim_emerge(obj_idx) // 4 frames
+function anim_emerge(obj_idx)
 {
     if (anim_emerge_timer[obj_idx] === anim_emerge_fcnt) {
         // Animation start
@@ -227,10 +229,33 @@ function anim_emerge_all()
     }
 }
 
+//Merge animation
+const anim_merge_occur = [0, 0, 0, 0, 0, 0, 0, 0];
+
+function anim_merge(obj_idx)
+{
+    if (anim_merge_timer[obj_idx] === anim_merge_fcnt) {
+        anim_hide_tile(obj_idx);
+        update_color(anim_merge_obj[obj_idx], tile_colors[game_tile_types[obj_idx]]);
+    }
+    if (anim_merge_timer[obj_idx] > 0) {
+        const scale_serial = [undefined, [1.5, 1.5], [1.6, 1.6], [1.5, 1.5], [0.4, 0.4]];
+        update_scale(anim_merge_obj[obj_idx], scale_serial[anim_merge_timer[obj_idx]]);
+        anim_merge_timer[obj_idx] = anim_merge_timer[obj_idx] - 1;
+    }
+}
+
+function anim_merge_all()
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        anim_merge(i);
+    }
+}
+
 // Vanish animation
 const anim_vanish_type = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-function anim_vanish(obj_idx) // 2 frames
+function anim_vanish(obj_idx)
 {
     if (anim_vanish_timer[obj_idx] === anim_vanish_fcnt) {
         // Animation start
@@ -262,6 +287,7 @@ function anim_play_all(state)
         }
         if (anim_state === 2) {
             anim_emerge_all();
+            anim_merge_all();
         }
     }
 }
@@ -487,6 +513,7 @@ function try_move_and_match(dir_id)
             types[i] = result_tile_types[line[i]];
             cnts[i] = result_tile_cnts[line[i]];
         }
+        
         for (let i = 0; i < 2; i = i + 1) {
             if (result_tile_types[line[i]] !== 0 &&
                 result_tile_types[line[i]] === result_tile_types[line[i + 1]]) {
@@ -584,7 +611,47 @@ function set_move_dis(before, after, dir_id, res) // For move animation
             res[line[j]] = line_dis[j];
         }
     }
-    return res;
+}
+
+function set_merge_occur(before, dir_id, res)
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        res[i] = 0; // Reset result
+    }
+    
+    const lines = pos_by_dir[dir_id];
+    for (let i = 0; i < 3; i = i + 1) {
+        const line = lines[i];
+        const line_before = [before[line[0]], before[line[1]], before[line[2]]];
+        
+        let p1 = -1;
+        let p2 = -1; // Idices for the first two none empty tile
+        for (let j = 0; j < 3; j = j + 1) {
+            if (line_before[j] !== 0) {
+                p1 = j;
+                break;
+            }
+        }
+        for (let j = p1 + 1; j < 3; j = j + 1) {
+            if (line_before[j] !== 0) {
+                p2 = j;
+                break;
+            }
+        }
+        
+        if (p1 >= 0 && p2 >= 0 && line_before[p1] === line_before[p2]) {
+            // Can be merged to p1
+            let pos = p1;
+            for (let j = p1 - 1; j >= 0; j = j - 1) {
+                if (line_before[j] === 0) {
+                    pos = j;
+                } else {
+                    break;
+                }
+            }
+            res[line[pos]] = 1;
+        }
+    }
 }
 
 function move_and_match(dir_id)
@@ -594,11 +661,20 @@ function move_and_match(dir_id)
     if (try_result[2]) {
         // Calculate info for move animation
         set_move_dis(game_tile_types, try_result[0], dir_id, anim_move_dis);
-        debug_log("move dis: " + stringify(anim_move_dis));
         anim_move_dir = dir_id;
         for (let i = 0; i < 9; i = i + 1) {
             if (anim_move_dis[i] !== 0) {
+                anim_move_type[i] = game_tile_types[i];
                 anim_move_timer[i] = anim_move_fcnt; // Call animator
+            }
+        }
+        
+        // Calculate info for merge animation
+        set_merge_occur(game_tile_types, dir_id, anim_merge_occur);
+        debug_log("merge at: " + stringify(anim_merge_occur));
+        for (let i = 0; i < 9; i = i + 1) {
+            if (anim_merge_occur[i] === 1) {
+                anim_merge_timer[i] = anim_merge_fcnt; // Call animator
             }
         }
         
@@ -758,9 +834,10 @@ function global_debug()
 {
     debug_log("fcnt: " + stringify(get_loop_count()));
     debug_log("anim state " + stringify(anim_state));
-    debug_log("move t: " + stringify(anim_move_timer));
-    debug_log("emerge t" + stringify(anim_emerge_timer));
-    debug_log("vanish t" + stringify(anim_vanish_timer));
+    // debug_log("move t: " + stringify(anim_move_timer));
+    // debug_log("emerge t: " + stringify(anim_emerge_timer));
+    // debug_log("vanish t: " + stringify(anim_vanish_timer));
+    debug_log("merge t: " + stringify(anim_merge_timer));
 }
 
 // Game state:
@@ -796,7 +873,6 @@ function update_state(state)
         }
         // Check animation playing
         if (anim_is_playing()) {
-            debug_log("GS checking anim");
             state[1] = 4;
             return 1;
         }
