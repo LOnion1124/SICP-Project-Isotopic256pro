@@ -49,7 +49,7 @@ const title_over = "GAME OVER";
 const title_win = "YOU WIN!";
 
 const footbar_info = ["CLICK TO START", "SCORE", "CLICK TO RESTART",
-                      "CONGRATULATION!", "SCORING"]; // Indexed by game state
+                      "CONGRATULATION!", "UPDATING"]; // Indexed by game state
 
 // Colors
 const invisible = [0, 0, 0, 0];
@@ -91,13 +91,20 @@ const tile_names = ["", "H", "He", "Be", "O", "P", "Ni", "Sn", "No"];
 const tile_val_strs = ["", "2", "4", "8", "16", "32", "64", "128", "256"];
 const tile_init_cnt = [-1, -1, -1, 6, -1, 24, -1, 96, -1];
 const tile_init_cnt_strs = ["", "", "", "5", "", "23", "", "95", ""];
-const tile_is_unstable = [0, 0, 0, 1, 0, 1, 0, 1, 0];
+const tile_is_unstable = [false, false, false, true, false, true, false, true, false];
 
 // Create game objects
 /* ---------------------------------------------------------------- */
 
 // Background
 const background = update_color(create_rectangle(scale, scale), background_color);
+
+// Shaking effect
+const shake_obj = [];
+
+for (let i = 0; i < 9; i = i + 1) {
+    shake_obj[i] = update_color(create_circle(grid_radius), invisible);
+}
 
 // Tiles
 const tiles_obj = [];
@@ -106,7 +113,7 @@ const tiles_name_obj = [];
 const tiles_cnt_obj = [];
 
 for (let i = 0; i < 9; i = i + 1) {
-    tiles_obj[i] = create_circle(grid_radius);
+    tiles_obj[i] = update_color(create_circle(grid_radius), invisible);
     tiles_val_obj[i] = update_scale(create_text(""), content_val_size);
     tiles_name_obj[i] = update_scale(create_text(""), content_name_size);
     tiles_cnt_obj[i] = update_scale(create_text(""), content_cnt_size);
@@ -410,6 +417,51 @@ function anim_play_all(state)
             anim_emerge_all();
             anim_merge_all();
         }
+    }
+}
+
+// Shaking effect
+/* ---------------------------------------------------------------- */
+
+const shake_fcnt = 3;
+let shake_timer = 0;
+
+function shake_enable()
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        if (tile_is_unstable[game_tile_types[i]]) {
+            update_color(shake_obj[i], tile_colors[game_tile_types[i]]);
+        } else {
+            update_color(shake_obj[i], invisible);
+        }
+    }
+}
+
+function shake_disable()
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        update_color(shake_obj[i], invisible);
+    }
+}
+
+function shake_tile(obj_idx)
+{
+    const scale_serial = [[1.12, 1.12], [1.05, 1.05], [1, 1]];
+    if (tile_is_unstable[game_tile_types[obj_idx]]) {
+        update_scale(shake_obj[obj_idx], scale_serial[shake_timer]);
+    }
+}
+
+function shake_all(state)
+{
+    if (state[1] === 1) {
+        shake_enable();
+        shake_timer = (shake_timer + 1) % shake_fcnt;
+        for (let i = 0; i < 9; i = i + 1) {
+            shake_tile(i);
+        }
+    } else {
+        shake_disable();
     }
 }
 
@@ -850,6 +902,8 @@ function init_pos_all()
         update_position(anim_move_obj[i], grid_pos[i]);
         update_position(anim_merge_obj[i], grid_pos[i]);
         update_position(anim_hide_obj[i], grid_pos[i]);
+        // Shakers
+        update_position(shake_obj[i], grid_pos[i]);
     }
     
     // Footbar
@@ -896,8 +950,8 @@ function global_debug(state)
     // debug_log("vanish: " + stringify(anim_vanish_timer));
     // debug_log("emerge: " + stringify(anim_emerge_timer));
     // debug_log("merge: " + stringify(anim_merge_timer));
-    debug_log("score: " + stringify(game_score));
-    debug_log("dscore: " + stringify(game_score_diff));
+    // debug_log("score: " + stringify(game_score));
+    // debug_log("dscore: " + stringify(game_score_diff));
 }
 
 // Game state:
@@ -982,6 +1036,7 @@ function on_update(state)
     update_state(state);
     
     anim_play_all(state); // Play animations
+    shake_all(state); // Shake effect
     draw_game(state); // Main canvas control
     update_footbar(state);
     
