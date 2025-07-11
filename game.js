@@ -120,9 +120,18 @@ const anim_merge_obj = [];
 const anim_hide_obj = [];
 
 for (let i = 0; i < 9; i = i + 1) {
+    // Hide objects layer should be between tile layer and other anim layer
     anim_hide_obj[i] = update_color(create_circle(grid_radius), invisible);
+}
+
+for (let i = 0; i < 9; i = i + 1) {
+    // State 1 anim layer
     anim_vanish_obj[i] = update_color(create_circle(grid_radius), invisible);
     anim_move_obj[i] = update_color(create_circle(grid_radius), invisible);
+}
+
+for (let i = 0; i < 9; i = i + 1) {
+    // State 2 anim layer
     anim_emerge_obj[i] = update_color(create_circle(grid_radius), invisible);
     anim_merge_obj[i] = update_color(create_circle(grid_radius), invisible);
 }
