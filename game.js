@@ -15,7 +15,8 @@ import {create_audio, loop_audio, play_audio, stop_audio, create_circle,
 // Size parameters
 const scale_base = 2;
 const scale = scale_base * 240;
-const canvas_size = [scale, scale];
+const scale_footbar = scale_base * 60;
+const canvas_size = [scale, scale + scale_footbar];
 const canvas_center = [scale * 0.5, scale * 0.5];
 
 const grid_scale = scale / 3;
@@ -30,15 +31,25 @@ const grid_pos = [[grid_scale * 0.5, grid_scale * 0.5],
                   [grid_scale * 1.5, grid_scale * 2.5],
                   [grid_scale * 2.5, grid_scale * 2.5]];
 
+const footbar_center = [scale * 0.5, scale + scale_footbar * 0.5];
+const footbar_info_pos = [scale * 0.5, scale + scale_footbar * 0.2];
+const footbar_score_pos = [scale * 0.5, scale + scale_footbar * 0.6];
+
 const content_title_size = [2 * scale_base, 2 * scale_base];
 const content_name_size = [2 * scale_base, 2 * scale_base];
 const content_val_size = [scale_base, scale_base];
 const content_cnt_size = [scale_base, scale_base];
 
+const footbar_info_size = [scale_base, scale_base];
+const footbar_score_size = [2 * scale_base, 2 * scale_base];
+
 // Texts
 const title_start = "ISO256PRO";
 const title_over = "GAME OVER";
 const title_win = "YOU WIN!";
+
+const footbar_info = ["CLICK TO START", "SCORE", "CLICK TO RESTART",
+                      "CONGRATULATION!", "SCORE"]; // Indexed by game state
 
 // Colors
 const invisible = [0, 0, 0, 0];
@@ -48,9 +59,11 @@ const background_color = [187, 173, 160, 255];
 const content_color_light = [249, 246, 242, 255];
 const content_color_dark = [119, 110, 101, 255];
 
-const musk_color_invisible = [249, 246, 242, 0];
-const musk_color_translucent = [249, 246, 242, 128];
-const musk_color_solid = [249, 246, 242, 255];
+const musk_color_invisible = [250, 248, 239, 0];
+const musk_color_translucent = [250, 248, 239, 128];
+const musk_color_solid = [250, 248, 239, 255];
+
+const footbar_background_color = [250, 248, 239, 255];
 
 // Tile properties by type
 // Indices (U for unstable):
@@ -99,6 +112,13 @@ for (let i = 0; i < 9; i = i + 1) {
     tiles_cnt_obj[i] = update_scale(create_text(""), content_cnt_size);
 }
 
+// Footbar
+const footbar_background = update_color(create_rectangle(scale, scale_footbar), footbar_background_color);
+const footbar_info_obj = update_color(update_scale(create_text(""),
+                         footbar_info_size), content_color_dark);
+const footbar_score_obj = update_color(update_scale(create_text(""),
+                          footbar_score_size), content_color_dark);
+
 // Animators
 const anim_emerge_obj = [];
 const anim_vanish_obj = [];
@@ -141,8 +161,10 @@ const text_game_win = update_color(update_scale(create_text(""),
 
 const game_tile_types = [];
 const game_tile_cnts = [];
+let game_score = 0;
+let game_score_diff = 0;
 
-// In game animation system
+// Game animation system
 /* ---------------------------------------------------------------- */
 
 // Timers
@@ -472,8 +494,12 @@ function reset_tile(obj_idx, type_id)
 function reduce_tile_cnt(obj_idx)
 {
     if (game_tile_cnts[obj_idx] === 1) {
-        anim_vanish_timer[obj_idx] = anim_vanish_fcnt; // Call animator
+        // Call animator
+        anim_vanish_timer[obj_idx] = anim_vanish_fcnt;
         anim_vanish_type[obj_idx] = game_tile_types[obj_idx];
+        // Set score decrement
+        game_score_diff = game_score_diff - math_pow(2, game_tile_types[obj_idx]);
+        
         reset_tile(obj_idx, 0);
     }
     if (game_tile_cnts[obj_idx] > 1) {
@@ -538,6 +564,8 @@ function try_move_and_match(dir_id)
             cnts[i] = result_tile_cnts[line[i]];
         }
         
+        let ds = 0;
+        
         for (let i = 0; i < 2; i = i + 1) {
             if (result_tile_types[line[i]] !== 0 &&
                 result_tile_types[line[i]] === result_tile_types[line[i + 1]]) {
@@ -545,18 +573,24 @@ function try_move_and_match(dir_id)
                 cnts[i] = tile_init_cnt[types[i]]; // Init count
                 types[i + 1] = 0;
                 cnts[i + 1] = tile_init_cnt[0];
+                ds = ds + math_pow(2, types[i]); // Score increment
                 break;
             }
         }
+        
         for (let i = 0; i < 3; i = i + 1) {
             result_tile_types[line[i]] = types[i]; // Copy back to result
             result_tile_cnts[line[i]] = cnts[i];
         }
+        
+        return ds;
     }
+    
+    let ds = 0; // Delta score
     
     for (let i = 0; i < 3; i = i + 1) {
         move_by_line(lines[i]);
-        match_by_line(lines[i]);
+        ds = ds + match_by_line(lines[i]);
         move_by_line(lines[i]);
     }
     
@@ -570,7 +604,7 @@ function try_move_and_match(dir_id)
         }
     }
 
-    return [result_tile_types, result_tile_cnts, flag];
+    return [result_tile_types, result_tile_cnts, flag, ds];
 }
 
 function collect_info_by_line(bef, aft) // Observe  move and merge info
@@ -648,7 +682,7 @@ function collect_info(before, after, dir_id, move_res, merge_res)
 
 function move_and_match(dir_id)
 {
-    // [0]: type, [1]: cnt, [2]: flag
+    // [0]: type, [1]: cnt, [2]: flag, [3]: score increment
     const try_result = try_move_and_match(dir_id);
     if (try_result[2]) {
         // Collect info for move & merge animation
@@ -669,6 +703,8 @@ function move_and_match(dir_id)
         for (let i = 0; i < 9; i = i + 1) {
             set_tile(i, try_result[0][i], try_result[1][i]); // Update game
         }
+        
+        game_score_diff = game_score_diff + try_result[3];
     }
     return try_result[2];
 }
@@ -713,6 +749,27 @@ function game_is_win()
     return false;
 }
 
+// Footbar & scoreboard
+/* ---------------------------------------------------------------- */
+
+function update_footbar(state)
+{
+    update_text(footbar_info_obj, footbar_info[state[1]]);
+    if (state[1] === 1) {
+        update_text(footbar_score_obj, stringify(game_score));
+    }
+    if (state[1] === 0 || state[1] === 2 || state[1] === 3) {
+        update_text(footbar_score_obj, "");
+    }
+    if (state[1] === 4) {
+        const ds = math_abs(game_score_diff);
+        const ds_str = (game_score_diff === 0
+                        ? "" : game_score_diff > 0
+                        ? "+" : "-") + stringify(ds);
+        update_text(footbar_score_obj, ds_str);
+    }
+}
+
 // External control (call on state switch)
 /* ---------------------------------------------------------------- */
 
@@ -728,6 +785,8 @@ function create_new_game()
     
     reset_tile(rpos, 1);
     anim_emerge_timer[rpos] = anim_emerge_fcnt; // Call emerge animator
+    
+    game_score = 0;
 }
 
 function start_game()
@@ -737,11 +796,13 @@ function start_game()
 
 function end_game_over()
 {
+    draw_tile_all();
     draw_over();
 }
 
 function end_game_win()
 {
+    draw_tile_all();
     draw_win();
 }
 
@@ -790,6 +851,11 @@ function init_pos_all()
         update_position(anim_merge_obj[i], grid_pos[i]);
         update_position(anim_hide_obj[i], grid_pos[i]);
     }
+    
+    // Footbar
+    update_position(footbar_background, footbar_center);
+    update_position(footbar_info_obj, footbar_info_pos);
+    update_position(footbar_score_obj, footbar_score_pos);
 }
 
 init_pos_all();
@@ -826,17 +892,19 @@ function global_debug(state)
     debug_log("fcnt: " + stringify(get_loop_count()));
     debug_log("game state " + stringify(state));
     debug_log("anim state " + stringify(anim_state));
-    debug_log("move: " + stringify(anim_move_timer));
-    debug_log("vanish: " + stringify(anim_vanish_timer));
-    debug_log("emerge: " + stringify(anim_emerge_timer));
-    debug_log("merge: " + stringify(anim_merge_timer));
+    // debug_log("move: " + stringify(anim_move_timer));
+    // debug_log("vanish: " + stringify(anim_vanish_timer));
+    // debug_log("emerge: " + stringify(anim_emerge_timer));
+    // debug_log("merge: " + stringify(anim_merge_timer));
+    debug_log("score: " + stringify(game_score));
+    debug_log("dscore: " + stringify(game_score_diff));
 }
 
 // Game state:
 // state[0]: input result in last frame, for debounce
 // state[1]: main state: 0 -> game start, 1 -> gaming, 
 //                       2 -> game over, 3 -> game win,
-//                       4 -> playing animation
+//                       4 -> playing animation, 
 
 // FSM manager
 function update_state(state)
@@ -868,6 +936,10 @@ function update_state(state)
         }
     }
     if (state[1] === 2) { // Game over
+        if (anim_is_playing()) {
+            state[1] = 4;
+            return 1;
+        }
         if (input === 4) {
             start_game();
             state[1] = 0; // Switch to game start
@@ -875,6 +947,10 @@ function update_state(state)
         }
     }
     if (state[1] === 3) { // Game win
+        if (anim_is_playing()) {
+            state[1] = 4;
+            return 1;
+        }
         if (input === 4) {
             start_game();
             state[1] = 0; // Switch to game start
@@ -888,6 +964,7 @@ function update_state(state)
             return 1;
         }
     }
+    
     return 0; // State unchanged
 }
 
@@ -904,8 +981,9 @@ function on_update(state)
     // Update FSM
     update_state(state);
     
-    anim_play_all(state);
+    anim_play_all(state); // Play animations
     draw_game(state); // Main canvas control
+    update_footbar(state);
     
     // Handle inputa
     input = get_input();
@@ -918,18 +996,20 @@ function on_update(state)
     // Game control
     if (state[1] === 1) { // Gaming
         if (0 <= input && input <= 3) {
+            game_score_diff = 0;
             const valid_move = move_and_match(input);
             if (valid_move) {
                 reduce_tile_cnt_all();
                 emerge_random_tile();
             }
+            game_score = game_score + game_score_diff;
         }
     }
     
     global_debug(state);
 }
 
-enable_debug(); // Uncomment to enable debug mode
+// enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
