@@ -798,10 +798,6 @@ function global_debug(state)
     debug_log("fcnt: " + stringify(get_loop_count()));
     debug_log("game state " + stringify(state));
     debug_log("anim state " + stringify(anim_state));
-    // debug_log("move t: " + stringify(anim_move_timer));
-    // debug_log("emerge t: " + stringify(anim_emerge_timer));
-    // debug_log("vanish t: " + stringify(anim_vanish_timer));
-    debug_log("merge t: " + stringify(anim_merge_timer));
 }
 
 // Game state:
@@ -901,7 +897,7 @@ function on_update(state)
     global_debug(state);
 }
 
-enable_debug(); // Uncomment to enable debug mode
+// enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
