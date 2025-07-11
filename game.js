@@ -49,7 +49,7 @@ const title_over = "GAME OVER";
 const title_win = "YOU WIN!";
 
 const footbar_info = ["CLICK TO START", "SCORE", "CLICK TO RESTART",
-                      "CONGRATULATION!", "SCORE"]; // Indexed by game state
+                      "CONGRATULATION!", "SCORING"]; // Indexed by game state
 
 // Colors
 const invisible = [0, 0, 0, 0];
@@ -763,9 +763,9 @@ function update_footbar(state)
     }
     if (state[1] === 4) {
         const ds = math_abs(game_score_diff);
-        const ds_str = (game_score_diff === 0
-                        ? "" : game_score_diff > 0
-                        ? "+" : "-") + stringify(ds);
+        const ds_str = (game_score_diff === 0 ? "---"
+                        : game_score_diff > 0 ? "+" + stringify(ds)
+                        : "-" + stringify(ds));
         update_text(footbar_score_obj, ds_str);
     }
 }
