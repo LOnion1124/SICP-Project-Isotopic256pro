@@ -326,7 +326,6 @@ function anim_is_playing()
             break;
         }
     }
-    debug_log(flag ? "anim on" : "anim off");
     return flag;
 }
 
@@ -549,14 +548,12 @@ function try_move_and_match(dir_id)
     return [result_tile_types, result_tile_cnts, flag];
 }
 
-function dis_by_line(bef, aft)
+function collect_info_by_line(bef, aft) // Observe  move and merge info
 {
     const tmp1 = []; // Stack for none-empty [index, type] in bef
     let top1 = 0;
     const tmp2 = []; // Same but aft
     let top2 = 0;
-    
-    const dest = [-1, -1, -1]; // Index of destination
     
     for (let i = 0; i < 3; i = i + 1) {
         if (bef[i] !== 0) {
@@ -568,6 +565,9 @@ function dis_by_line(bef, aft)
             top2 = top2 + 1;
         }
     }
+    
+    const dest = [-1, -1, -1]; // Index of destination
+    const merge_at = [0, 0, 0]; // Position of merge
     
     let p1 = 0;
     for (let p2 = 0; p2 < top2; p2 = p2 + 1) {
@@ -584,6 +584,7 @@ function dis_by_line(bef, aft)
             tmp1[p1][1] === tmp1[p1 + 1][1]) { // Merged
             dest[tmp1[p1][0]] = tmp2[p2][0];
             dest[tmp1[p1 + 1][0]] = tmp2[p2][0];
+            merge_at[tmp2[p2][0]] = 1; // Merge at here
             p1 = p1 + 2;
             continue;
         }
@@ -594,62 +595,28 @@ function dis_by_line(bef, aft)
         dis[i] = dest[i] === -1 ? 0 : i - dest[i];
     }
     
-    return dis;
+    return [dis, merge_at];
 }
 
-function set_move_dis(before, after, dir_id, res) // For move animation
-{
-    const lines = pos_by_dir[dir_id];
-    for (let i = 0; i < 3; i = i + 1) {
-        const line = lines[i];
-        const line_before = [before[line[0]], before[line[1]], before[line[2]]];
-        const line_after = [after[line[0]], after[line[1]], after[line[2]]];
-        
-        const line_dis = dis_by_line(line_before, line_after);
-
-        for (let j = 0; j < 3; j = j + 1) {
-            res[line[j]] = line_dis[j];
-        }
-    }
-}
-
-function set_merge_occur(before, dir_id, res)
+// For move & merge animation
+function collect_info(before, after, dir_id, move_res, merge_res)
 {
     for (let i = 0; i < 9; i = i + 1) {
-        res[i] = 0; // Reset result
+        move_res[i] = 0; // Reset result
+        merge_res[i] = 0;
     }
     
     const lines = pos_by_dir[dir_id];
     for (let i = 0; i < 3; i = i + 1) {
         const line = lines[i];
         const line_before = [before[line[0]], before[line[1]], before[line[2]]];
+        const line_after = [after[line[0]], after[line[1]], after[line[2]]];
         
-        let p1 = -1;
-        let p2 = -1; // Idices for the first two none empty tile
+        const line_info = collect_info_by_line(line_before, line_after);
+        
         for (let j = 0; j < 3; j = j + 1) {
-            if (line_before[j] !== 0) {
-                p1 = j;
-                break;
-            }
-        }
-        for (let j = p1 + 1; j < 3; j = j + 1) {
-            if (line_before[j] !== 0) {
-                p2 = j;
-                break;
-            }
-        }
-        
-        if (p1 >= 0 && p2 >= 0 && line_before[p1] === line_before[p2]) {
-            // Can be merged to p1
-            let pos = p1;
-            for (let j = p1 - 1; j >= 0; j = j - 1) {
-                if (line_before[j] === 0) {
-                    pos = j;
-                } else {
-                    break;
-                }
-            }
-            res[line[pos]] = 1;
+            move_res[line[j]] = line_info[0][j];
+            merge_res[line[j]] = line_info[1][j];
         }
     }
 }
@@ -659,20 +626,16 @@ function move_and_match(dir_id)
     // [0]: type, [1]: cnt, [2]: flag
     const try_result = try_move_and_match(dir_id);
     if (try_result[2]) {
-        // Calculate info for move animation
-        set_move_dis(game_tile_types, try_result[0], dir_id, anim_move_dis);
+        // Collect info for move & merge animation
+        collect_info(game_tile_types, try_result[0], dir_id,
+                     anim_move_dis, anim_merge_occur);
+        
         anim_move_dir = dir_id;
         for (let i = 0; i < 9; i = i + 1) {
             if (anim_move_dis[i] !== 0) {
                 anim_move_type[i] = game_tile_types[i];
                 anim_move_timer[i] = anim_move_fcnt; // Call animator
             }
-        }
-        
-        // Calculate info for merge animation
-        set_merge_occur(game_tile_types, dir_id, anim_merge_occur);
-        debug_log("merge at: " + stringify(anim_merge_occur));
-        for (let i = 0; i < 9; i = i + 1) {
             if (anim_merge_occur[i] === 1) {
                 anim_merge_timer[i] = anim_merge_fcnt; // Call animator
             }
@@ -830,9 +793,10 @@ function get_input()
     return -1;
 }
 
-function global_debug()
+function global_debug(state)
 {
     debug_log("fcnt: " + stringify(get_loop_count()));
+    debug_log("game state " + stringify(state));
     debug_log("anim state " + stringify(anim_state));
     // debug_log("move t: " + stringify(anim_move_timer));
     // debug_log("emerge t: " + stringify(anim_emerge_timer));
@@ -849,8 +813,6 @@ function global_debug()
 // FSM manager
 function update_state(state)
 {
-    debug_log("game state " + stringify(state));
-    
     if (state[1] === 0) {
         if (input === 4) {
             create_new_game();
@@ -925,8 +887,6 @@ function on_update(state)
         state[0] = input;
     }
     
-    debug_log("input " + stringify(input));
-    
     // Game control
     if (state[1] === 1) { // Gaming
         if (0 <= input && input <= 3) {
@@ -938,10 +898,10 @@ function on_update(state)
         }
     }
     
-    global_debug();
+    global_debug(state);
 }
 
-// enable_debug(); // Uncomment to enable debug mode
+enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
