@@ -99,19 +99,6 @@ for (let i = 0; i < 9; i = i + 1) {
     tiles_cnt_obj[i] = update_scale(create_text(""), content_cnt_size);
 }
 
-// Musks
-const musk_game_start = update_color(create_rectangle(scale, scale), musk_color_invisible);
-const musk_game_over = update_color(create_rectangle(scale, scale), musk_color_invisible);
-const musk_game_win = update_color(create_rectangle(scale, scale), musk_color_invisible);
-
-// Texts
-const text_game_start = update_color(update_scale(create_text(""),
-                        content_title_size), content_color_dark);
-const text_game_over = update_color(update_scale(create_text(""),
-                       content_title_size), content_color_dark);
-const text_game_win = update_color(update_scale(create_text(""),
-                      content_title_size), content_color_dark);
-
 // Animators
 const anim_emerge_obj = [];
 const anim_vanish_obj = [];
@@ -136,13 +123,26 @@ for (let i = 0; i < 9; i = i + 1) {
     anim_merge_obj[i] = update_color(create_circle(grid_radius), invisible);
 }
 
+// Musks
+const musk_game_start = update_color(create_rectangle(scale, scale), musk_color_invisible);
+const musk_game_over = update_color(create_rectangle(scale, scale), musk_color_invisible);
+const musk_game_win = update_color(create_rectangle(scale, scale), musk_color_invisible);
+
+// Texts on musks
+const text_game_start = update_color(update_scale(create_text(""),
+                        content_title_size), content_color_dark);
+const text_game_over = update_color(update_scale(create_text(""),
+                       content_title_size), content_color_dark);
+const text_game_win = update_color(update_scale(create_text(""),
+                      content_title_size), content_color_dark);
+
 // Game data
 /* ---------------------------------------------------------------- */
 
 const game_tile_types = [];
 const game_tile_cnts = [];
 
-// Animation system
+// In game animation system
 /* ---------------------------------------------------------------- */
 
 // Timers
@@ -285,39 +285,6 @@ function anim_vanish_all()
     }
 }
 
-// Main animation function
-function anim_play_all(state)
-{
-    anim_update_state();
-    if (state[1] === 4) { // Gaming animations
-        if (anim_state === 1) {
-            anim_move_all();
-            anim_vanish_all();
-        }
-        if (anim_state === 2) {
-            anim_emerge_all();
-            anim_merge_all();
-        }
-    }
-}
-
-function anim_clear(obj)
-{
-    for (let i = 0; i < 9; i = i + 1) {
-        update_color(obj[i], invisible);
-        update_color(obj[i], invisible);
-    }
-}
-
-function anim_clear_all()
-{
-    anim_clear(anim_move_obj);
-    anim_clear(anim_vanish_obj);
-    anim_clear(anim_emerge_obj);
-    anim_clear(anim_merge_obj);
-    anim_clear(anim_hide_obj);
-}
-
 // Animation state control: 0 -> not playing,
 //                          1 -> top order anims, 2 -> second order anims...
 let anim_state = 0;
@@ -341,27 +308,43 @@ function anim_is_playing()
 function anim_update_state()
 {
     if (anim_state === 0) {
-        for (let i = 0; i < 9; i = i + 1) {
-            if (anim_move_timer[i] > 0 || anim_vanish_timer[i] > 0) {
-                anim_state = 1; // Switch to top order anims
-                return 1;
-            }
-        }
-    }
-    if (anim_state === 1) {
-        let flag1 = true;
+        let flag1 = false;
         let flag2 = false;
+        
         for (let i = 0; i < 9; i = i + 1) {
             if (anim_move_timer[i] > 0 || anim_vanish_timer[i] > 0) {
-                flag1 = false;
+                flag1 = true;
             }
             if (anim_emerge_timer[i] > 0 || anim_merge_timer[i] > 0) {
                 flag2 = true;
             }
         }
+        
+        if (flag1) { // State 1 anims to be played
+            anim_state = 1;
+            return 1;
+        }
+        if (!flag1 && flag2) { // No state 1 anims, direct to state 2
+            anim_state = 2;
+            return 1;
+        }
+    }
+    if (anim_state === 1) {
+        let flag1 = false;
+        let flag2 = false;
+        
+        for (let i = 0; i < 9; i = i + 1) {
+            if (anim_move_timer[i] > 0 || anim_vanish_timer[i] > 0) {
+                flag1 = true;
+            }
+            if (anim_emerge_timer[i] > 0 || anim_merge_timer[i] > 0) {
+                flag2 = true;
+            }
+        }
+        
         // Switch to state 2 if
         // State 1 anims all played and state 2 anims to be played
-        if (flag1 && flag2) {
+        if (!flag1 && flag2) {
             // anim_clear(anim_move_obj); // Reset animation
             anim_state = 2;
             return 1;
@@ -372,6 +355,40 @@ function anim_update_state()
     }
     
     debug_log(anim_state);
+}
+
+// Main animation functions
+
+function anim_clear(obj)
+{
+    for (let i = 0; i < 9; i = i + 1) {
+        update_color(obj[i], invisible);
+        update_color(obj[i], invisible);
+    }
+}
+
+function anim_clear_all()
+{
+    anim_clear(anim_move_obj);
+    anim_clear(anim_vanish_obj);
+    anim_clear(anim_emerge_obj);
+    anim_clear(anim_merge_obj);
+    anim_clear(anim_hide_obj);
+}
+
+function anim_play_all(state)
+{
+    anim_update_state();
+    if (state[1] === 4) { // Gaming animations
+        if (anim_state === 1) {
+            anim_move_all();
+            anim_vanish_all();
+        }
+        if (anim_state === 2) {
+            anim_emerge_all();
+            anim_merge_all();
+        }
+    }
 }
 
 // Draw (based on game data)
@@ -426,7 +443,6 @@ function draw_win()
 
 function draw_new_game()
 {
-    draw_tile_all();
     // Undraw game start
     update_color(musk_game_start, musk_color_invisible);
     update_text(text_game_start, "");
@@ -706,9 +722,12 @@ function create_new_game()
     for (let i = 0; i < 9; i = i + 1) {
         reset_tile(i, 0);
     }
-    reset_tile(rpos, 1);
     
-    draw_new_game();
+    draw_new_game(); // Init canvas
+    draw_tile_all();
+    
+    reset_tile(rpos, 1);
+    anim_emerge_timer[rpos] = anim_emerge_fcnt; // Call emerge animator
 }
 
 function start_game()
@@ -807,6 +826,10 @@ function global_debug(state)
     debug_log("fcnt: " + stringify(get_loop_count()));
     debug_log("game state " + stringify(state));
     debug_log("anim state " + stringify(anim_state));
+    debug_log("move: " + stringify(anim_move_timer));
+    debug_log("vanish: " + stringify(anim_vanish_timer));
+    debug_log("emerge: " + stringify(anim_emerge_timer));
+    debug_log("merge: " + stringify(anim_merge_timer));
 }
 
 // Game state:
@@ -821,7 +844,7 @@ function update_state(state)
     if (state[1] === 0) {
         if (input === 4) {
             create_new_game();
-            state[1] = 1; // Switch to gaming
+            state[1] = 4; // Switch to first animation
             return 1;
         }
     }
@@ -886,7 +909,7 @@ function on_update(state)
     
     // Handle inputa
     input = get_input();
-    if (input === state[0]) {
+    if (input === state[0]) { // Debounce
         input = -1;
     } else {
         state[0] = input;
@@ -906,7 +929,7 @@ function on_update(state)
     global_debug(state);
 }
 
-// enable_debug(); // Uncomment to enable debug mode
+enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
