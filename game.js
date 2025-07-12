@@ -426,18 +426,7 @@ function anim_play_all(state)
 const shake_fcnt = 3;
 let shake_timer = 0;
 
-function shake_enable()
-{
-    for (let i = 0; i < 9; i = i + 1) {
-        if (tile_is_unstable[game_tile_types[i]]) {
-            update_color(shake_obj[i], tile_colors[game_tile_types[i]]);
-        } else {
-            update_color(shake_obj[i], invisible);
-        }
-    }
-}
-
-function shake_disable()
+function shake_clear_all()
 {
     for (let i = 0; i < 9; i = i + 1) {
         update_color(shake_obj[i], invisible);
@@ -455,13 +444,21 @@ function shake_tile(obj_idx)
 function shake_all(state)
 {
     if (state[1] === 1) {
-        shake_enable();
+        // Enable shaking
+        for (let i = 0; i < 9; i = i + 1) {
+            if (tile_is_unstable[game_tile_types[i]]) {
+                update_color(shake_obj[i], tile_colors[game_tile_types[i]]);
+            } else {
+                update_color(shake_obj[i], invisible);
+            }
+        }
+        
         shake_timer = (shake_timer + 1) % shake_fcnt;
         for (let i = 0; i < 9; i = i + 1) {
             shake_tile(i);
         }
     } else {
-        shake_disable();
+        shake_clear_all();
     }
 }
 
