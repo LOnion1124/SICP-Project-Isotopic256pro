@@ -19,6 +19,13 @@ const scale_footbar = scale_base * 60;
 const canvas_size = [scale, scale + scale_footbar];
 const canvas_center = [scale * 0.5, scale * 0.5];
 
+const title_pos = [scale * 0.5, scale * 0.4];
+const btn_pos = [[scale * 0.5, scale * 0.55], [scale * 0.5, scale * 0.65], [scale * 0.5, scale * 0.75]];
+
+const footbar_center = [scale * 0.5, scale + scale_footbar * 0.5];
+const footbar_info_pos = [scale * 0.5, scale + scale_footbar * 0.2];
+const footbar_score_pos = [scale * 0.5, scale + scale_footbar * 0.6];
+
 const grid_scale = scale / 3;
 const grid_radius = grid_scale * 0.45;
 const grid_pos = [[grid_scale * 0.5, grid_scale * 0.5],
@@ -31,25 +38,20 @@ const grid_pos = [[grid_scale * 0.5, grid_scale * 0.5],
                   [grid_scale * 1.5, grid_scale * 2.5],
                   [grid_scale * 2.5, grid_scale * 2.5]];
 
-const footbar_center = [scale * 0.5, scale + scale_footbar * 0.5];
-const footbar_info_pos = [scale * 0.5, scale + scale_footbar * 0.2];
-const footbar_score_pos = [scale * 0.5, scale + scale_footbar * 0.6];
-
-const content_title_size = [2 * scale_base, 2 * scale_base];
-const content_name_size = [2 * scale_base, 2 * scale_base];
-const content_val_size = [scale_base, scale_base];
-const content_cnt_size = [scale_base, scale_base];
-
-const footbar_info_size = [scale_base, scale_base];
-const footbar_score_size = [2 * scale_base, 2 * scale_base];
+const content_size_large = [2 * scale_base, 2 * scale_base];
+const content_size_medium = [scale_base, scale_base];
 
 // Texts
-const title_start = "ISO256PRO";
+const title_start = "ISOTOPIC256";
 const title_over = "GAME OVER";
 const title_win = "YOU WIN!";
 
 const footbar_info = ["CLICK TO START", "SCORE", "CLICK TO RESTART",
                       "CONGRATULATION!", "UPDATING"]; // Indexed by game state
+
+const btn_content_normal = "normal";
+const btn_content_hard = "hard";
+const btn_content_custom = "customized";
 
 // Colors
 const invisible = [0, 0, 0, 0];
@@ -59,11 +61,12 @@ const background_color = [187, 173, 160, 255];
 const content_color_light = [249, 246, 242, 255];
 const content_color_dark = [119, 110, 101, 255];
 
-const musk_color_invisible = [250, 248, 239, 0];
 const musk_color_translucent = [250, 248, 239, 128];
 const musk_color_solid = [250, 248, 239, 255];
 
 const footbar_background_color = [250, 248, 239, 255];
+
+const btn_color = [187, 173, 160, 255];
 
 // Tile properties by type
 // Indices (U for unstable):
@@ -114,17 +117,17 @@ const tiles_cnt_obj = [];
 
 for (let i = 0; i < 9; i = i + 1) {
     tiles_obj[i] = update_color(create_circle(grid_radius), invisible);
-    tiles_val_obj[i] = update_scale(create_text(""), content_val_size);
-    tiles_name_obj[i] = update_scale(create_text(""), content_name_size);
-    tiles_cnt_obj[i] = update_scale(create_text(""), content_cnt_size);
+    tiles_val_obj[i] = update_scale(create_text(""), content_size_medium);
+    tiles_name_obj[i] = update_scale(create_text(""), content_size_large);
+    tiles_cnt_obj[i] = update_scale(create_text(""), content_size_medium);
 }
 
 // Footbar
 const footbar_background = update_color(create_rectangle(scale, scale_footbar), footbar_background_color);
 const footbar_info_obj = update_color(update_scale(create_text(""),
-                         footbar_info_size), content_color_dark);
+                         content_size_medium), content_color_dark);
 const footbar_score_obj = update_color(update_scale(create_text(""),
-                          footbar_score_size), content_color_dark);
+                          content_size_large), content_color_dark);
 
 // Animators
 const anim_emerge_obj = [];
@@ -151,17 +154,29 @@ for (let i = 0; i < 9; i = i + 1) {
 }
 
 // Musks
-const musk_game_start = update_color(create_rectangle(scale, scale), musk_color_invisible);
-const musk_game_over = update_color(create_rectangle(scale, scale), musk_color_invisible);
-const musk_game_win = update_color(create_rectangle(scale, scale), musk_color_invisible);
+const musk_game_start = update_color(create_rectangle(scale, scale), invisible);
+const musk_game_over = update_color(create_rectangle(scale, scale), invisible);
+const musk_game_win = update_color(create_rectangle(scale, scale), invisible);
 
 // Texts on musks
 const text_game_start = update_color(update_scale(create_text(""),
-                        content_title_size), content_color_dark);
+                        content_size_large), content_color_dark);
 const text_game_over = update_color(update_scale(create_text(""),
-                       content_title_size), content_color_dark);
+                       content_size_large), content_color_dark);
 const text_game_win = update_color(update_scale(create_text(""),
-                      content_title_size), content_color_dark);
+                      content_size_large), content_color_dark);
+
+// Start buttons
+const btn_normal_obj = update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible);
+const btn_hard_obj = update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible);
+const btn_custom_obj = update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible);
+
+const btn_text_normal = update_color(update_scale(create_text(""),
+                        content_size_medium), content_color_light);
+const btn_text_hard = update_color(update_scale(create_text(""),
+                      content_size_medium), content_color_light);
+const btn_text_custom = update_color(update_scale(create_text(""),
+                        content_size_medium), content_color_light);
 
 // Game data
 /* ---------------------------------------------------------------- */
@@ -490,33 +505,47 @@ function draw_tile_all()
 function draw_start()
 {
     // Undraw game over
-    update_color(musk_game_over, musk_color_invisible);
+    update_color(musk_game_over, invisible);
     update_text(text_game_over, "");
     // Undraw game win
-    update_color(musk_game_win, musk_color_invisible);
+    update_color(musk_game_win, invisible);
     update_text(text_game_win, "");
     // Draw game start
-    update_to_top(update_color(musk_game_start, musk_color_solid));
-    update_to_top(update_text(text_game_start, title_start));
+    update_color(musk_game_start, musk_color_solid);
+    update_text(text_game_start, title_start);
+    // Draw buttons
+    update_color(btn_normal_obj, btn_color);
+    update_color(btn_hard_obj, btn_color);
+    update_color(btn_custom_obj, btn_color);
+    update_text(btn_text_normal, btn_content_normal);
+    update_text(btn_text_hard, btn_content_hard);
+    update_text(btn_text_custom, btn_content_custom);
 }
 
 function draw_over()
 {
-    update_to_top(update_color(musk_game_over, musk_color_translucent));
-    update_to_top(update_text(text_game_over, title_over));
+    update_color(musk_game_over, musk_color_translucent);
+    update_text(text_game_over, title_over);
 }
 
 function draw_win()
 {
-    update_to_top(update_color(musk_game_win, musk_color_translucent));
-    update_to_top(update_text(text_game_win, title_win));
+    update_color(musk_game_win, musk_color_translucent);
+    update_text(text_game_win, title_win);
 }
 
 function draw_new_game()
 {
     // Undraw game start
-    update_color(musk_game_start, musk_color_invisible);
+    update_color(musk_game_start, invisible);
     update_text(text_game_start, "");
+    // Draw buttons
+    update_color(btn_normal_obj, invisible);
+    update_color(btn_hard_obj, invisible);
+    update_color(btn_custom_obj, invisible);
+    update_text(btn_text_normal, "");
+    update_text(btn_text_hard, "");
+    update_text(btn_text_custom, "");
 }
 
 function draw_game(state)
@@ -878,14 +907,25 @@ function init_pos_all()
     }
     
     // Initial positions
+    
+    // Background & musks
     update_position(background, canvas_center);
     update_position(musk_game_start, canvas_center);
     update_position(musk_game_over, canvas_center);
     update_position(musk_game_win, canvas_center);
     
-    update_position(text_game_start, canvas_center);
-    update_position(text_game_over, canvas_center);
-    update_position(text_game_win, canvas_center);
+    update_position(text_game_start, title_pos);
+    update_position(text_game_over, title_pos);
+    update_position(text_game_win, title_pos);
+    
+    // Buttons
+    update_position(btn_normal_obj, btn_pos[0]);
+    update_position(btn_hard_obj, btn_pos[1]);
+    update_position(btn_custom_obj, btn_pos[2]);
+    
+    update_position(btn_text_normal, btn_pos[0]);
+    update_position(btn_text_hard, btn_pos[1]);
+    update_position(btn_text_custom, btn_pos[2]);
     
     for (let i = 0; i < 9; i = i + 1) {
         // Tiles
