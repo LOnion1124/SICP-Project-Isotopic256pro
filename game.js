@@ -397,8 +397,6 @@ function anim_update_state()
     if (!anim_is_playing()) { // All anims played
         anim_state = 0;
     }
-    
-    debug_log(anim_state);
 }
 
 // Main animation functions
@@ -420,18 +418,15 @@ function anim_clear_all()
     anim_clear(anim_hide_obj);
 }
 
-function anim_play_all(state)
+function anim_play_all()
 {
-    anim_update_state();
-    if (state[1] === 4) { // Gaming animations
-        if (anim_state === 1) {
-            anim_move_all();
-            anim_vanish_all();
-        }
-        if (anim_state === 2) {
-            anim_emerge_all();
-            anim_merge_all();
-        }
+    if (anim_state === 1) {
+        anim_move_all();
+        anim_vanish_all();
+    }
+    if (anim_state === 2) {
+        anim_emerge_all();
+        anim_merge_all();
     }
 }
 
@@ -456,24 +451,20 @@ function shake_tile(obj_idx)
     }
 }
 
-function shake_all(state)
+function shake_all()
 {
-    if (state[1] === 1) {
-        // Enable shaking
-        for (let i = 0; i < 9; i = i + 1) {
-            if (tile_is_unstable[game_tile_types[i]]) {
-                update_color(shake_obj[i], tile_colors[game_tile_types[i]]);
-            } else {
-                update_color(shake_obj[i], invisible);
-            }
+    // Enable shaking
+    for (let i = 0; i < 9; i = i + 1) {
+        if (tile_is_unstable[game_tile_types[i]]) {
+            update_color(shake_obj[i], tile_colors[game_tile_types[i]]);
+        } else {
+            update_color(shake_obj[i], invisible);
         }
-        
-        shake_timer = (shake_timer + 1) % shake_fcnt;
-        for (let i = 0; i < 9; i = i + 1) {
-            shake_tile(i);
-        }
-    } else {
-        shake_clear_all();
+    }
+    
+    shake_timer = (shake_timer + 1) % shake_fcnt;
+    for (let i = 0; i < 9; i = i + 1) {
+        shake_tile(i);
     }
 }
 
@@ -548,11 +539,9 @@ function draw_new_game()
     update_text(btn_text_custom, "");
 }
 
-function draw_game(state)
+function draw_game()
 {
-    if (state[1] === 1) {
-        draw_tile_all();
-    }
+    draw_tile_all();
 }
 
 // Game control
@@ -983,10 +972,10 @@ function global_debug(state)
     debug_log("fcnt: " + stringify(get_loop_count()));
     debug_log("game state " + stringify(state));
     debug_log("anim state " + stringify(anim_state));
-    // debug_log("move: " + stringify(anim_move_timer));
-    // debug_log("vanish: " + stringify(anim_vanish_timer));
-    // debug_log("emerge: " + stringify(anim_emerge_timer));
-    // debug_log("merge: " + stringify(anim_merge_timer));
+    debug_log("move: " + stringify(anim_move_timer));
+    debug_log("vanish: " + stringify(anim_vanish_timer));
+    debug_log("emerge: " + stringify(anim_emerge_timer));
+    debug_log("merge: " + stringify(anim_merge_timer));
     // debug_log("score: " + stringify(game_score));
     // debug_log("dscore: " + stringify(game_score_diff));
 }
@@ -1022,6 +1011,7 @@ function update_state(state)
         }
         // Check animation playing
         if (anim_is_playing()) {
+            shake_clear_all(); // Reset shakers
             state[1] = 4;
             return 1;
         }
@@ -1049,6 +1039,7 @@ function update_state(state)
         }
     }
     if (state[1] === 4) { // Animation is playing
+        anim_update_state(); // Move to sub FSM of animation
         if (!anim_is_playing()) { // Animation over
             anim_clear_all();
             state[1] = 1; // Switch to gaming
@@ -1069,14 +1060,6 @@ function on_update(state)
         }
     }
     
-    // Update FSM
-    update_state(state);
-    
-    anim_play_all(state); // Play animations
-    shake_all(state); // Shake effect
-    draw_game(state); // Main canvas control
-    update_footbar(state);
-    
     // Handle inputa
     input = get_input();
     if (input === state[0]) { // Debounce
@@ -1085,8 +1068,13 @@ function on_update(state)
         state[0] = input;
     }
     
+    // Update FSM
+    update_state(state);
+    
     // Game control
     if (state[1] === 1) { // Gaming
+        shake_all(); // Shake effect
+        draw_game(); // Main canvas control
         if (0 <= input && input <= 3) {
             game_score_diff = 0;
             const valid_move = move_and_match(input);
@@ -1097,6 +1085,11 @@ function on_update(state)
             game_score = game_score + game_score_diff;
         }
     }
+    if (state[1] === 4) {
+        anim_play_all(); // Play animations
+    }
+    
+    update_footbar(state);
     
     global_debug(state);
 }
