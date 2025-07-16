@@ -1170,7 +1170,7 @@ function get_input()
         return 8;
     }
     
-    if (input_key_down("Shift")) {
+    if (input_key_down("Shift")) { // Cheat code
         return 114514;
     }
     
