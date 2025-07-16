@@ -47,8 +47,8 @@ const title_start = "ISOTOPIC256";
 const title_over = "GAME OVER";
 const title_win = "YOU WIN!";
 
-const footbar_info = ["TEAM HACHIMI", "SCORE", "Click to restart",
-                      "CONGRATULATION!", "UPDATING", "Right-click to start",
+const footbar_info = ["TEAM HACHIMI", "SCORE", "Right-click to restart",
+                      "Right-click to restart", "UPDATING", "Click to start",
                       "Right-click to return", "Right-click to return"]; // Indexed by game state
 
 const btn_contents = ["play", "settings", "leaderboard"];
@@ -103,6 +103,9 @@ let player_name = "";
 
 let sound_enable = true;
 let sound_enable_str = "On";
+
+const leaderboard = [];
+let leaderboard_len = 0;
 
 // Create game objects
 /* ---------------------------------------------------------------- */
@@ -170,6 +173,8 @@ const text_game_start = update_color(update_scale(create_text(""),
                         content_size_large), content_color_dark);
 const text_game_over = update_color(update_scale(create_text(""),
                        content_size_large), content_color_dark);
+const text_final_name = update_color(update_scale(create_text(""),
+                        content_size_medium), content_color_dark);
 
 const text_name_input = update_color(update_scale(create_text(""),
                         content_size_medium), content_color_dark);
@@ -528,6 +533,7 @@ function draw_start()
     // Undraw game over
     update_color(musk_game_over, invisible);
     update_text(text_game_over, "");
+    update_text(text_final_name, "");
     // Draw game start
     update_color(musk_game_start, musk_color_solid);
     update_text(text_game_start, title_start);
@@ -538,16 +544,18 @@ function draw_start()
     }
 }
 
-function draw_over()
+function draw_fail()
 {
     update_color(musk_game_over, musk_color_translucent);
     update_text(text_game_over, title_over);
+    update_text(text_final_name, "Name: " + player_name);
 }
 
 function draw_win()
 {
     update_color(musk_game_over, musk_color_translucent);
     update_text(text_game_over, title_win);
+    update_text(text_final_name, "Name: " + player_name);
 }
 
 function draw_new_game()
@@ -855,7 +863,7 @@ function emerge_random_tile()
 }
 
 // Check game over
-function game_is_over()
+function game_is_fail()
 {
     const try_valid = [try_move_and_match(0)[2],
                        try_move_and_match(1)[2],
@@ -897,13 +905,43 @@ function name_show()
 
 function settings_update()
 {
-    update_text(text_settings_item, "Toggle Sound(1): " + sound_enable_str);
+    update_text(text_settings_item, "Sound: " + sound_enable_str);
 }
 
 // Leaderboard
 /* ---------------------------------------------------------------- */
 
-
+function leaderboard_update()
+{
+    // Form in [play_name, score]
+    // In descending order by key = score
+    // For the same player, keep his highest score
+    let flag = false;
+    for (let i = 0; i < leaderboard_len; i = i + 1) {
+        if (leaderboard[i][1] === player_name) {
+            flag = true;
+            if (leaderboard[i][0] < game_score) {
+                leaderboard[i][0] = game_score; // Update score
+            }
+            break;
+        }
+    }
+    if (!flag) { // New player, insert score
+        leaderboard[leaderboard_len] = [game_score, player_name];
+        leaderboard_len = leaderboard_len + 1;
+    }
+    
+    // Sort leaderboard (by insertion sort)
+    for (let i = 0; i < leaderboard_len; i = i + 1) {
+        let cur = leaderboard[i];
+        let j = i - 1;
+        while (j >= 0 && leaderboard[j][0] < cur[0]) {
+            leaderboard[j + 1] = leaderboard[j];
+            j = j - 1;
+        }
+        leaderboard[j + 1] = cur;
+    }
+}
 
 // Footbar & scoreboard
 /* ---------------------------------------------------------------- */
@@ -914,7 +952,10 @@ function update_footbar(state)
     if (state[0] === 1) {
         update_text(footbar_score_obj, stringify(game_score));
     }
-    if (state[0] === 0 || state[0] === 2 || state[0] === 3) {
+    if (state[0] === 2 || state[0] === 3) {
+        update_text(footbar_score_obj, "Score: " + stringify(game_score));
+    }
+    if (state[0] === 0) {
         update_text(footbar_score_obj, "");
     }
     if (state[0] === 4) {
@@ -929,7 +970,7 @@ function update_footbar(state)
 // External control (call on state switch)
 /* ---------------------------------------------------------------- */
 
-function create_new_game()
+function trans_play()
 {
     const rpos = math_floor(math_random() * 1000) % 9;
     for (let i = 0; i < 9; i = i + 1) {
@@ -948,34 +989,35 @@ function create_new_game()
     game_score = 0;
 }
 
-function start_game()
+function trans_start()
 {
     draw_start();
 }
 
-function end_game_over()
+function trans_fail()
 {
     draw_tile_all();
-    draw_over();
+    draw_fail();
 }
 
-function end_game_win()
+function trans_win()
 {
     draw_tile_all();
     draw_win();
 }
 
-function show_name_input()
+function trans_name_input()
 {
+    player_name = "";
     draw_name_input();
 }
 
-function show_settings()
+function trans_settings()
 {
     draw_settings();
 }
 
-function show_leaderboard()
+function trans_leaderboard()
 {
     draw_leaderboard();
 }
@@ -1011,6 +1053,7 @@ function init_pos_all()
 
     update_position(text_game_start, title_pos);
     update_position(text_game_over, title_pos);
+    update_position(text_final_name, canvas_center);
     
     update_position(text_name_input, top_pos);
     update_position(text_name_buffer, canvas_center);
@@ -1089,8 +1132,9 @@ function get_input()
     if (input_right_mouse_down()) {
         return 8;
     }
-    if (input_key_down("1")) {
-        return 9;
+    
+    if (input_key_down("Shift")) {
+        return 114514;
     }
     
     return -1;
@@ -1166,6 +1210,16 @@ function get_text_input()
     return "";
 }
 
+function get_settings_input()
+{
+    if (query_text(text_settings_item) !== "" && input_left_mouse_down() &&
+        pointer_over_gameobject(text_settings_item)) {
+            return 0;
+    }
+    
+    return -1;
+}
+
 function global_debug(state)
 {
     debug_log("fcnt: " + stringify(get_loop_count()));
@@ -1177,6 +1231,7 @@ function global_debug(state)
     // debug_log("merge: " + stringify(anim_merge_timer));
     // debug_log("score: " + stringify(game_score));
     // debug_log("dscore: " + stringify(game_score_diff));
+    debug_log("lb " + stringify(leaderboard));
 }
 
 // Game state:
@@ -1184,44 +1239,50 @@ function global_debug(state)
 //                       2 -> game over, 3 -> game win,
 //                       4 -> playing animation,
 //                       5 -> name input, 6 -> setting, 7 -> leaderboard
-// state[1]: input result in last frame, for debounce
-// state[2]: input text for name input, for debounce
+// state[1]: input debounce for main input
+// state[2]: input debounce for name input
+// state[3]: input debounce for settings
 
 // FSM manager
 function update_state(state)
 {
+    if (state[0] === undefined) {
+        state[0] = 0; // Initialization
+    }
     if (state[0] === 0) {
         if (input === 5) { // Click play
             play_se(se_click);
-            show_name_input();
+            trans_name_input();
             state[0] = 5; // Name input state
             return 1;
         }
         if (input === 6) { // Click settings
             play_se(se_click);
-            show_settings();
+            trans_settings();
             state[0] = 6;
             return 1;
         }
         if (input === 7) { // Click leaderboard
             play_se(se_click);
-            show_leaderboard();
+            trans_leaderboard();
             state[0] = 7;
             return 1;
         }
     }
     if (state[0] === 1) {
-        // Check game over
-        if (game_is_over()) {
+        // Check game fail
+        if (game_is_fail()) {
             play_se(se_fail);
-            end_game_over();
+            leaderboard_update();
+            trans_fail();
             state[0] = 2; // Switch to game over
             return 1;
         }
         // Check game win
-        if (game_is_win()) {
+        if (game_is_win() || input === 114514) {
             play_se(se_win);
-            end_game_win();
+            leaderboard_update();
+            trans_win();
             state[0] = 3; // Switch to game win
             return 1;
         }
@@ -1237,9 +1298,9 @@ function update_state(state)
             state[0] = 4;
             return 1;
         }
-        if (input === 4) {
+        if (input === 8) {
             play_se(se_click);
-            start_game();
+            trans_start();
             state[0] = 0; // Switch to game start
             return 1;
         }
@@ -1249,9 +1310,9 @@ function update_state(state)
             state[0] = 4;
             return 1;
         }
-        if (input === 4) {
+        if (input === 8) {
             play_se(se_click);
-            start_game();
+            trans_start();
             state[0] = 0; // Switch to game start
             return 1;
         }
@@ -1265,9 +1326,9 @@ function update_state(state)
         }
     }
     if (state[0] === 5) { // Name input
-        if (input === 8) {
+        if (input === 4 && player_name !== "") { // Name is not empty
             play_se(se_start);
-            create_new_game();
+            trans_play();
             state[0] = 4; // Switch to first animation
             return 1;
         }
@@ -1275,7 +1336,7 @@ function update_state(state)
     if (state[0] === 6) { // Settings
         if (input === 8) {
             play_se(se_click);
-            start_game();
+            trans_start();
             state[0] = 0; // Switch to game start
             return 1;
         }
@@ -1283,7 +1344,7 @@ function update_state(state)
     if (state[0] === 7) { // Leaderboard
         if (input === 8) {
             play_se(se_click);
-            start_game();
+            trans_start();
             state[0] = 0; // Switch to game start
             return 1;
         }
@@ -1292,16 +1353,8 @@ function update_state(state)
     return 0; // State unchanged
 }
 
-const init_state = [0, -1, ""];
 function on_update(state)
 {
-    // Initialize state
-    for (let i = 0; i < 3; i = i + 1) {
-        if (state[i] === undefined) {
-            state[i] = init_state[i];
-        }
-    }
-    
     // Update FSM
     update_state(state);
     
@@ -1343,7 +1396,13 @@ function on_update(state)
     }
     if (state[0] === 6) { // Settings
         settings_update();
-        if (input === 9) {
+        let sel = get_settings_input();
+        if (sel === state[3]) {
+            sel = -1;
+        } else {
+            state[3] = sel;
+        }
+        if (sel === 0) {
             if (!sound_enable) { // Enable sound effects
                 sound_enable = true;
                 sound_enable_str = "On";
@@ -1360,7 +1419,7 @@ function on_update(state)
     global_debug(state);
 }
 
-// enable_debug(); // Uncomment to enable debug mode
+enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
