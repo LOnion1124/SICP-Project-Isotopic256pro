@@ -177,6 +177,17 @@ const btn_text_hard = update_color(update_scale(create_text(""),
                       content_size_medium), content_color_light);
 const btn_text_custom = update_color(update_scale(create_text(""),
                         content_size_medium), content_color_light);
+                        
+// Sound effects
+// Downloaded from https://pixabay.com/
+// License at https://pixabay.com/service/license-summary/
+const se_base_url = "https://raw.githubusercontent.com/LOnion1124/SICP-Project-Isotopic256pro/main/src/";
+const se_merge = create_audio(se_base_url + "new-notification-04-326127.mp3", 1);
+const se_start = create_audio(se_base_url + "system-notification-199277.mp3", 1);
+const se_fail = create_audio(se_base_url + "error-011-352286.mp3", 1);
+const se_win = create_audio(se_base_url + "level-up-02-199574.mp3", 1);
+const se_pop = create_audio(se_base_url + "bubble-pop-06-351337.mp3", 1);
+const se_move = create_audio(se_base_url + "swoosh-05-329226.mp3", 1);
 
 // Game data
 /* ---------------------------------------------------------------- */
@@ -530,7 +541,7 @@ function draw_new_game()
     // Undraw game start
     update_color(musk_game_start, invisible);
     update_text(text_game_start, "");
-    // Draw buttons
+    // Undraw buttons
     update_color(btn_normal_obj, invisible);
     update_color(btn_hard_obj, invisible);
     update_color(btn_custom_obj, invisible);
@@ -561,6 +572,7 @@ function reset_tile(obj_idx, type_id)
 function reduce_tile_cnt(obj_idx)
 {
     if (game_tile_cnts[obj_idx] === 1) {
+        play_audio(se_pop);
         // Call animator
         anim_vanish_timer[obj_idx] = anim_vanish_fcnt;
         anim_vanish_type[obj_idx] = game_tile_types[obj_idx];
@@ -763,6 +775,7 @@ function move_and_match(dir_id)
                 anim_move_timer[i] = anim_move_fcnt; // Call animator
             }
             if (anim_merge_occur[i] === 1) {
+                play_audio(se_merge);
                 anim_merge_timer[i] = anim_merge_fcnt; // Call animator
             }
         }
@@ -849,6 +862,9 @@ function create_new_game()
     
     draw_new_game(); // Init canvas
     draw_tile_all();
+    
+    anim_clear_all();
+    shake_clear_all();
     
     reset_tile(rpos, 1);
     anim_emerge_timer[rpos] = anim_emerge_fcnt; // Call emerge animator
@@ -991,6 +1007,7 @@ function update_state(state)
 {
     if (state[1] === 0) {
         if (input === 4) {
+            play_audio(se_start);
             create_new_game();
             state[1] = 4; // Switch to first animation
             return 1;
@@ -999,12 +1016,14 @@ function update_state(state)
     if (state[1] === 1) {
         // Check game over
         if (game_is_over()) {
+            play_audio(se_fail);
             end_game_over();
             state[1] = 2; // Switch to game over
             return 1;
         }
         // Check game win
         if (game_is_win()) {
+            play_audio(se_win);
             end_game_win();
             state[1] = 3; // Switch to game win
             return 1;
@@ -1079,6 +1098,7 @@ function on_update(state)
             game_score_diff = 0;
             const valid_move = move_and_match(input);
             if (valid_move) {
+                play_audio(se_move);
                 reduce_tile_cnt_all();
                 emerge_random_tile();
             }
