@@ -42,6 +42,9 @@ const grid_pos = [[grid_scale * 0.5, grid_scale * 0.5],
 const content_size_large = [2 * scale_base, 2 * scale_base];
 const content_size_medium = [scale_base, scale_base];
 
+const leaderboard_top_pos = [scale * 0.5, scale * 0.25];
+const leaderboard_line_space = scale * 0.07;
+
 // Texts
 const title_start = "ISOTOPIC256";
 const title_over = "GAME OVER";
@@ -208,6 +211,13 @@ const se_pop = create_audio(se_base_url + "bubble-pop-06-351337.mp3", 1);
 const se_move = create_audio(se_base_url + "swoosh-05-329226.mp3", 1);
 const se_click = create_audio(se_base_url + "computer-mouse-click-351398.mp3", 1);
 const se_notification = create_audio(se_base_url + "new-notification-014-363678.mp3", 1);
+
+// Leaderboard (top 10)
+const leaderboard_obj = [];
+for (let i = 0; i < 10; i = i + 1) {
+    leaderboard_obj[i] = update_color(update_scale(create_text(""),
+                         content_size_medium), content_color_dark);
+}
 
 // Game data
 /* ---------------------------------------------------------------- */
@@ -943,6 +953,25 @@ function leaderboard_update()
     }
 }
 
+function leaderboard_clear_all()
+{
+    for (let i = 0; i < 10; i = i + 1) {
+        update_text(leaderboard_obj[i], "");
+    }
+}
+
+function leaderboard_show_all()
+{
+    leaderboard_clear_all(); // Reset
+    // Refresh rankings
+    for (let i = 0; i < leaderboard_len; i = i + 1) {
+        const content = stringify(i + 1) + ". " +
+                        stringify(leaderboard[i][0]) + " by " +
+                        leaderboard[i][1];
+        update_text(leaderboard_obj[i], content);
+    }
+}
+
 // Footbar & scoreboard
 /* ---------------------------------------------------------------- */
 
@@ -967,7 +996,7 @@ function update_footbar(state)
     }
 }
 
-// External control (call on state switch)
+// External control (state transition)
 /* ---------------------------------------------------------------- */
 
 function trans_play()
@@ -1020,6 +1049,7 @@ function trans_settings()
 function trans_leaderboard()
 {
     draw_leaderboard();
+    leaderboard_show_all();
 }
 
 // On start
@@ -1087,6 +1117,13 @@ function init_pos_all()
     update_position(footbar_background, footbar_center);
     update_position(footbar_info_obj, footbar_info_pos);
     update_position(footbar_score_obj, footbar_score_pos);
+    
+    // Leaderboard
+    let pos = leaderboard_top_pos;
+    for (let i = 0; i < 10; i = i + 1) {
+        update_position(leaderboard_obj[i], pos);
+        pos[1] = pos[1] + leaderboard_line_space;
+    }
 }
 
 init_pos_all();
@@ -1344,6 +1381,7 @@ function update_state(state)
     if (state[0] === 7) { // Leaderboard
         if (input === 8) {
             play_se(se_click);
+            leaderboard_clear_all();
             trans_start();
             state[0] = 0; // Switch to game start
             return 1;
@@ -1419,7 +1457,7 @@ function on_update(state)
     global_debug(state);
 }
 
-enable_debug(); // Uncomment to enable debug mode
+// enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
