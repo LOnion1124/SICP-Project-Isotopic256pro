@@ -19,6 +19,7 @@ const scale_footbar = scale_base * 60;
 const canvas_size = [scale, scale + scale_footbar];
 const canvas_center = [scale * 0.5, scale * 0.5];
 
+const top_pos = [scale * 0.5, scale * 0.1];
 const title_pos = [scale * 0.5, scale * 0.4];
 const btn_pos = [[scale * 0.5, scale * 0.55], [scale * 0.5, scale * 0.65], [scale * 0.5, scale * 0.75]];
 
@@ -49,9 +50,7 @@ const title_win = "YOU WIN!";
 const footbar_info = ["CLICK TO START", "SCORE", "CLICK TO RESTART",
                       "CONGRATULATION!", "UPDATING"]; // Indexed by game state
 
-const btn_content_normal = "normal";
-const btn_content_hard = "hard";
-const btn_content_custom = "customized";
+const btn_contents = ["play", "settings", "leaderboard"];
 
 // Colors
 const invisible = [0, 0, 0, 0];
@@ -156,28 +155,29 @@ for (let i = 0; i < 9; i = i + 1) {
 // Musks
 const musk_game_start = update_color(create_rectangle(scale, scale), invisible);
 const musk_game_over = update_color(create_rectangle(scale, scale), invisible);
-const musk_game_win = update_color(create_rectangle(scale, scale), invisible);
 
 // Texts on musks
 const text_game_start = update_color(update_scale(create_text(""),
                         content_size_large), content_color_dark);
 const text_game_over = update_color(update_scale(create_text(""),
                        content_size_large), content_color_dark);
-const text_game_win = update_color(update_scale(create_text(""),
+
+const text_name_input = update_color(update_scale(create_text(""),
+                        content_size_medium), content_color_dark);
+const text_settings = update_color(update_scale(create_text(""),
                       content_size_large), content_color_dark);
+const text_leaderboard = update_color(update_scale(create_text(""),
+                         content_size_large), content_color_dark);
 
 // Start buttons
-const btn_normal_obj = update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible);
-const btn_hard_obj = update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible);
-const btn_custom_obj = update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible);
+const btn_objs = [update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible),
+                  update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible),
+                  update_color(update_scale(create_circle(scale / 24), [6, 1]), invisible)];
 
-const btn_text_normal = update_color(update_scale(create_text(""),
-                        content_size_medium), content_color_light);
-const btn_text_hard = update_color(update_scale(create_text(""),
-                      content_size_medium), content_color_light);
-const btn_text_custom = update_color(update_scale(create_text(""),
-                        content_size_medium), content_color_light);
-                        
+const btn_texts = [update_color(update_scale(create_text(""), content_size_medium), content_color_light),
+                   update_color(update_scale(create_text(""), content_size_medium), content_color_light),
+                   update_color(update_scale(create_text(""), content_size_medium), content_color_light)];
+
 // Sound effects
 // Downloaded from https://pixabay.com/
 // License at https://pixabay.com/service/license-summary/
@@ -506,22 +506,20 @@ function draw_tile_all()
 
 function draw_start()
 {
+    // Undraw settings & leaderboards
+    update_text(text_settings, "");
+    update_text(text_leaderboard, "");
     // Undraw game over
     update_color(musk_game_over, invisible);
     update_text(text_game_over, "");
-    // Undraw game win
-    update_color(musk_game_win, invisible);
-    update_text(text_game_win, "");
     // Draw game start
     update_color(musk_game_start, musk_color_solid);
     update_text(text_game_start, title_start);
     // Draw buttons
-    update_color(btn_normal_obj, btn_color);
-    update_color(btn_hard_obj, btn_color);
-    update_color(btn_custom_obj, btn_color);
-    update_text(btn_text_normal, btn_content_normal);
-    update_text(btn_text_hard, btn_content_hard);
-    update_text(btn_text_custom, btn_content_custom);
+    for (let i = 0; i < 3; i = i + 1) {
+        update_color(btn_objs[i], btn_color);
+        update_text(btn_texts[i], btn_contents[i]);
+    }
 }
 
 function draw_over()
@@ -532,27 +530,56 @@ function draw_over()
 
 function draw_win()
 {
-    update_color(musk_game_win, musk_color_translucent);
-    update_text(text_game_win, title_win);
+    update_color(musk_game_over, musk_color_translucent);
+    update_text(text_game_over, title_win);
 }
 
 function draw_new_game()
 {
-    // Undraw game start
+    // Undraw name input & start musk
     update_color(musk_game_start, invisible);
-    update_text(text_game_start, "");
-    // Undraw buttons
-    update_color(btn_normal_obj, invisible);
-    update_color(btn_hard_obj, invisible);
-    update_color(btn_custom_obj, invisible);
-    update_text(btn_text_normal, "");
-    update_text(btn_text_hard, "");
-    update_text(btn_text_custom, "");
+    update_text(text_name_input, "");
 }
 
 function draw_game()
 {
     draw_tile_all();
+}
+
+function draw_name_input()
+{
+    // Undraw game start (but keep musk)
+    update_text(text_game_start, "");
+    // Undraw buttons
+    for (let i = 0; i < 3; i = i + 1) {
+        update_color(btn_objs[i], invisible);
+        update_text(btn_texts[i], "");
+    }
+    update_text(text_name_input, "Enter your name:");
+}
+
+function draw_settings()
+{
+    // Undraw game start (but keep musk)
+    update_text(text_game_start, "");
+    // Undraw buttons
+    for (let i = 0; i < 3; i = i + 1) {
+        update_color(btn_objs[i], invisible);
+        update_text(btn_texts[i], "");
+    }
+    update_text(text_settings, "Settings");
+}
+
+function draw_leaderboard()
+{
+    // Undraw game start (but keep musk)
+    update_text(text_game_start, "");
+    // Undraw buttons
+    for (let i = 0; i < 3; i = i + 1) {
+        update_color(btn_objs[i], invisible);
+        update_text(btn_texts[i], "");
+    }
+    update_text(text_leaderboard, "Leaderboard");
 }
 
 // Game control
@@ -889,6 +916,21 @@ function end_game_win()
     draw_win();
 }
 
+function show_name_input()
+{
+    draw_name_input();
+}
+
+function show_settings()
+{
+    draw_settings();
+}
+
+function show_leaderboard()
+{
+    draw_leaderboard();
+}
+
 // On start
 /* ---------------------------------------------------------------- */
 
@@ -917,20 +959,19 @@ function init_pos_all()
     update_position(background, canvas_center);
     update_position(musk_game_start, canvas_center);
     update_position(musk_game_over, canvas_center);
-    update_position(musk_game_win, canvas_center);
-    
+
     update_position(text_game_start, title_pos);
     update_position(text_game_over, title_pos);
-    update_position(text_game_win, title_pos);
     
+    update_position(text_name_input, top_pos);
+    update_position(text_settings, top_pos);
+    update_position(text_leaderboard, top_pos);
+
     // Buttons
-    update_position(btn_normal_obj, btn_pos[0]);
-    update_position(btn_hard_obj, btn_pos[1]);
-    update_position(btn_custom_obj, btn_pos[2]);
-    
-    update_position(btn_text_normal, btn_pos[0]);
-    update_position(btn_text_hard, btn_pos[1]);
-    update_position(btn_text_custom, btn_pos[2]);
+    for (let i = 0; i < 3; i = i + 1) {
+        update_position(btn_objs[i], btn_pos[i]);
+        update_position(btn_texts[i], btn_pos[i]);
+    }
     
     for (let i = 0; i < 9; i = i + 1) {
         // Tiles
@@ -976,7 +1017,22 @@ function get_input()
     if (input_key_down("a") || input_key_down("ArrowLeft")) {
         return 3;
     }
+    function btn_available(idx)
+    {
+        return query_text(btn_texts[idx]) !== "" && 
+               (pointer_over_gameobject(btn_objs[idx]) ||
+               pointer_over_gameobject(btn_texts[idx]));
+    }
     if (input_left_mouse_down()) {
+        if (btn_available(0)) {
+            return 5;
+        }
+        if (btn_available(1)) {
+            return 6;
+        }
+        if (btn_available(2)) {
+            return 7;
+        }
         return 4;
     }
     
@@ -988,10 +1044,10 @@ function global_debug(state)
     debug_log("fcnt: " + stringify(get_loop_count()));
     debug_log("game state " + stringify(state));
     debug_log("anim state " + stringify(anim_state));
-    debug_log("move: " + stringify(anim_move_timer));
-    debug_log("vanish: " + stringify(anim_vanish_timer));
-    debug_log("emerge: " + stringify(anim_emerge_timer));
-    debug_log("merge: " + stringify(anim_merge_timer));
+    // debug_log("move: " + stringify(anim_move_timer));
+    // debug_log("vanish: " + stringify(anim_vanish_timer));
+    // debug_log("emerge: " + stringify(anim_emerge_timer));
+    // debug_log("merge: " + stringify(anim_merge_timer));
     // debug_log("score: " + stringify(game_score));
     // debug_log("dscore: " + stringify(game_score_diff));
 }
@@ -1000,16 +1056,26 @@ function global_debug(state)
 // state[0]: input result in last frame, for debounce
 // state[1]: main state: 0 -> game start, 1 -> gaming, 
 //                       2 -> game over, 3 -> game win,
-//                       4 -> playing animation, 
+//                       4 -> playing animation,
+//                       5 -> name input, 6 -> setting, 7 -> leaderboard
 
 // FSM manager
 function update_state(state)
 {
     if (state[1] === 0) {
-        if (input === 4) {
-            play_audio(se_start);
-            create_new_game();
-            state[1] = 4; // Switch to first animation
+        if (input === 5) { // Click play
+            show_name_input();
+            state[1] = 5; // Name input state
+            return 1;
+        }
+        if (input === 6) { // Click settings
+            show_settings();
+            state[1] = 6;
+            return 1;
+        }
+        if (input === 7) { // Click leaderboard
+            show_leaderboard();
+            state[1] = 7;
             return 1;
         }
     }
@@ -1065,6 +1131,28 @@ function update_state(state)
             return 1;
         }
     }
+    if (state[1] === 5) { // Name input
+        if (input === 4) {
+            play_audio(se_start);
+            create_new_game();
+            state[1] = 4; // Switch to first animation
+            return 1;
+        }
+    }
+    if (state[1] === 6) { // Settings
+        if (input === 4) {
+            start_game();
+            state[1] = 0; // Switch to game start
+            return 1;
+        }
+    }
+    if (state[1] === 7) { // Leaderboard
+        if (input === 4) {
+            start_game();
+            state[1] = 0; // Switch to game start
+            return 1;
+        }
+    }
     
     return 0; // State unchanged
 }
@@ -1079,6 +1167,9 @@ function on_update(state)
         }
     }
     
+    // Update FSM
+    update_state(state);
+    
     // Handle inputa
     input = get_input();
     if (input === state[0]) { // Debounce
@@ -1086,9 +1177,6 @@ function on_update(state)
     } else {
         state[0] = input;
     }
-    
-    // Update FSM
-    update_state(state);
     
     // Game control
     if (state[1] === 1) { // Gaming
@@ -1114,7 +1202,7 @@ function on_update(state)
     global_debug(state);
 }
 
-// enable_debug(); // Uncomment to enable debug mode
+enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
