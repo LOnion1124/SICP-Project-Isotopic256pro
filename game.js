@@ -1,13 +1,8 @@
-import {create_audio, loop_audio, play_audio, stop_audio, create_circle, 
-        create_rectangle, create_sprite, create_text, create_triangle, 
-        query_color, query_flip, query_id, query_position, query_rotation, 
-        query_scale, query_text, update_color, update_flip, update_position, 
-        update_rotation, update_scale, update_text, update_to_top, 
-        gameobjects_overlap, input_key_down, input_left_mouse_down, 
-        input_right_mouse_down, pointer_over_gameobject, build_game, 
-        debug_log, enable_debug, get_game_time, get_loop_count, 
-        query_pointer_position, set_dimensions, set_fps, set_scale, 
-        update_loop} from "arcade_2d"; // Simply import everything
+import {create_audio, play_audio, create_circle, create_rectangle, create_text,
+        query_text, update_color, update_position, update_scale, update_text,
+        input_key_down, input_left_mouse_down, input_right_mouse_down,
+        pointer_over_gameobject, build_game, debug_log, enable_debug,
+        get_loop_count, set_dimensions, update_loop} from "arcade_2d";
 
 // Constants
 /* ---------------------------------------------------------------- */
@@ -96,7 +91,6 @@ const tile_content_colors = [content_color_dark,
 const tile_names = ["", "H", "He", "Be", "O", "P", "Ni", "Sn", "No"];
 const tile_val_strs = ["", "2", "4", "8", "16", "32", "64", "128", "256"];
 const tile_init_cnt = [-1, -1, -1, 6, -1, 24, -1, 96, -1];
-const tile_init_cnt_strs = ["", "", "", "5", "", "23", "", "95", ""];
 const tile_is_unstable = [false, false, false, true, false, true, false, true, false];
 
 // Parameters
@@ -1297,13 +1291,13 @@ function debug_all(state) // Call when debug mode enabled
     debug_log("fcnt: " + stringify(get_loop_count()));
     debug_log("game state " + stringify(state));
     debug_log("anim state " + stringify(anim_state));
-    // debug_log("move: " + stringify(anim_move_timer));
-    // debug_log("vanish: " + stringify(anim_vanish_timer));
-    // debug_log("emerge: " + stringify(anim_emerge_timer));
-    // debug_log("merge: " + stringify(anim_merge_timer));
-    // debug_log("score: " + stringify(game_score));
-    // debug_log("dscore: " + stringify(game_score_diff));
-    // debug_log("lb " + stringify(leaderboard));
+    debug_log("move: " + stringify(anim_move_timer));
+    debug_log("vanish: " + stringify(anim_vanish_timer));
+    debug_log("emerge: " + stringify(anim_emerge_timer));
+    debug_log("merge: " + stringify(anim_merge_timer));
+    debug_log("score: " + stringify(game_score));
+    debug_log("dscore: " + stringify(game_score_diff));
+    debug_log("lb " + stringify(leaderboard));
     debug_log("cheat state " + stringify(cheat_state));
 }
 
@@ -1496,6 +1490,5 @@ function on_update(state)
 // enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
-// set_fps(1);
 set_dimensions(canvas_size);
 build_game();
