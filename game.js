@@ -1493,7 +1493,7 @@ function on_update(state)
     debug_all(state);
 }
 
-enable_debug(); // Uncomment to enable debug mode
+// enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
