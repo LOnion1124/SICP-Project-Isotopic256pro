@@ -1170,10 +1170,6 @@ function get_input()
         return 8;
     }
     
-    if (input_key_down("Shift")) { // Cheat code
-        return 114514;
-    }
-    
     return -1;
 }
 
@@ -1257,7 +1253,46 @@ function get_settings_input()
     return -1;
 }
 
-function global_debug(state)
+// Cheat code: hachimi
+let cheat_state = 0;
+function check_cheat()
+{
+    let ch = get_text_input();
+    if ((cheat_state === 0 || cheat_state === 1) && ch === "h") {
+        cheat_state = 1;
+        return false;
+    }
+    if ((cheat_state === 1 || cheat_state === 2) && ch === "a") {
+        cheat_state = 2;
+        return false;
+    }
+    if ((cheat_state === 2 || cheat_state === 3) && ch === "c") {
+        cheat_state = 3;
+        return false;
+    }
+    if ((cheat_state === 3 || cheat_state === 4) && ch === "h") {
+        cheat_state = 4;
+        return false;
+    }
+    if ((cheat_state === 4 || cheat_state === 5) && ch === "i") {
+        cheat_state = 5;
+        return false;
+    }
+    if ((cheat_state === 5 || cheat_state === 6) && ch === "m") {
+        cheat_state = 6;
+        return false;
+    }
+    if ((cheat_state === 6 || cheat_state === 7) && ch === "i") {
+        cheat_state = 7;
+        return true;
+    }
+    if (ch !== "") {
+        cheat_state = 0;
+    }
+    return false;
+}
+
+function debug_all(state) // Call when debug mode enabled
 {
     debug_log("fcnt: " + stringify(get_loop_count()));
     debug_log("game state " + stringify(state));
@@ -1268,7 +1303,8 @@ function global_debug(state)
     // debug_log("merge: " + stringify(anim_merge_timer));
     // debug_log("score: " + stringify(game_score));
     // debug_log("dscore: " + stringify(game_score_diff));
-    debug_log("lb " + stringify(leaderboard));
+    // debug_log("lb " + stringify(leaderboard));
+    debug_log("cheat state " + stringify(cheat_state));
 }
 
 // Game state:
@@ -1316,7 +1352,7 @@ function update_state(state)
             return 1;
         }
         // Check game win
-        if (game_is_win() || input === 114514) {
+        if (game_is_win() || check_cheat()) {
             play_se(se_win);
             leaderboard_update();
             trans_win();
@@ -1454,10 +1490,10 @@ function on_update(state)
     
     update_footbar(state);
     
-    global_debug(state);
+    debug_all(state);
 }
 
-// enable_debug(); // Uncomment to enable debug mode
+enable_debug(); // Uncomment to enable debug mode
 update_loop(state => on_update(state));
 
 // set_fps(1);
